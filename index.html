@@ -3,1316 +3,464 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>D365 Prep — Dynamics 365 interview drill</title>
+<title>Solution Layering — Dataverse, made visible</title>
+<meta name="description" content="Interactive explainer: how Dataverse resolves a component across stacked managed and unmanaged solution layers.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ---------- tokens ---------- */
 :root{
-  box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#f5f6fb; --surface:#ffffff; --surface-2:#eef0f7; --border:#dfe2ee; --border-strong:#c7cbdc;
+  --text:#1b1e2b; --muted:#5a6078; --faint:#878daa;
+  --accent:#5452e6; --accent-hi:#6d6bf2; --accent-soft:rgba(84,82,230,.10); --accent-line:rgba(84,82,230,.3);
 
-  --bg:#f5f6fb;
-  --surface:#ffffff;
-  --surface-2:#eef0f7;
-  --elevated:#ffffff;
-  --border:#dfe2ee;
-  --border-strong:#c7cbdc;
-  --text:#1b1e2b;
-  --muted:#5a6078;
-  --faint:#878daa;
+  /* layer identity hues (also used as source colour-coding) */
+  --L-system:#6b7390; --L-system-s:rgba(107,115,144,.14);
+  --L-sales:#2f7fe0;  --L-sales-s:rgba(47,127,224,.14);
+  --L-prexa:#7a51e6;  --L-prexa-s:rgba(122,81,230,.14);
+  --L-client:#149a7a; --L-client-s:rgba(20,154,122,.14);
+  --L-active:#d08512; --L-active-s:rgba(208,133,18,.16);
 
-  --accent:#5452e6;
-  --accent-hi:#6d6bf2;
-  --accent-soft:rgba(84,82,230,.10);
-  --accent-line:rgba(84,82,230,.32);
-
-  --ok:#12996b;
-  --ok-soft:rgba(18,153,107,.12);
-  --bad:#d64141;
-  --bad-soft:rgba(214,65,65,.12);
-  --warn:#b9771f;
-  --warn-soft:rgba(185,119,31,.14);
-
-  --d-basic:#128a73;
-  --d-inter:#b07a16;
-  --d-adv:#8a44c9;
-
-  --shadow:0 1px 2px rgba(20,24,40,.06),0 8px 24px rgba(20,24,40,.06);
-  --radius:14px;
-  --radius-sm:9px;
-
-  --font-head:"Space Grotesk",system-ui,sans-serif;
-  --font-body:"IBM Plex Sans",system-ui,sans-serif;
-  --font-mono:"JetBrains Mono",ui-monospace,monospace;
-
-  --maxw:1180px;
+  --shadow:0 1px 2px rgba(20,24,40,.06),0 10px 30px rgba(20,24,40,.07);
+  --radius:14px; --radius-sm:10px;
+  --fh:"Space Grotesk",system-ui,sans-serif; --fb:"IBM Plex Sans",system-ui,sans-serif; --fm:"JetBrains Mono",ui-monospace,monospace;
+  --maxw:1120px;
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0c0e16;
-    --surface:#141826;
-    --surface-2:#1b2030;
-    --elevated:#1d2232;
-    --border:#272d41;
-    --border-strong:#353d56;
-    --text:#e9ebf5;
-    --muted:#9aa1bd;
-    --faint:#6a7291;
-
-    --accent:#8785f6;
-    --accent-hi:#9d9bff;
-    --accent-soft:rgba(135,133,246,.14);
-    --accent-line:rgba(135,133,246,.34);
-
-    --ok:#45cf93;
-    --ok-soft:rgba(69,207,147,.14);
-    --bad:#f0706f;
-    --bad-soft:rgba(240,112,111,.14);
-    --warn:#e3ad5f;
-    --warn-soft:rgba(227,173,95,.16);
-
-    --d-basic:#4cc79f;
-    --d-inter:#e0a94f;
-    --d-adv:#b283ef;
-
-    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.36);
-  }
-}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c0e16; --surface:#141826; --surface-2:#1b2030; --border:#272d41; --border-strong:#39415b;
+  --text:#e9ebf5; --muted:#9aa1bd; --faint:#6a7291;
+  --accent:#8785f6; --accent-hi:#9d9bff; --accent-soft:rgba(135,133,246,.14); --accent-line:rgba(135,133,246,.32);
+  --L-system:#8b93b2; --L-system-s:rgba(139,147,178,.16);
+  --L-sales:#5aa0ff;  --L-sales-s:rgba(90,160,255,.16);
+  --L-prexa:#a989ff;  --L-prexa-s:rgba(169,137,255,.16);
+  --L-client:#3fc29c; --L-client-s:rgba(63,194,156,.16);
+  --L-active:#e9b35a; --L-active-s:rgba(233,179,90,.18);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 36px rgba(0,0,0,.4);
+}}
 :root[data-theme="dark"]{
-  --bg:#0c0e16;
-  --surface:#141826;
-  --surface-2:#1b2030;
-  --elevated:#1d2232;
-  --border:#272d41;
-  --border-strong:#353d56;
-  --text:#e9ebf5;
-  --muted:#9aa1bd;
-  --faint:#6a7291;
-
-  --accent:#8785f6;
-  --accent-hi:#9d9bff;
-  --accent-soft:rgba(135,133,246,.14);
-  --accent-line:rgba(135,133,246,.34);
-
-  --ok:#45cf93;
-  --ok-soft:rgba(69,207,147,.14);
-  --bad:#f0706f;
-  --bad-soft:rgba(240,112,111,.14);
-  --warn:#e3ad5f;
-  --warn-soft:rgba(227,173,95,.16);
-
-  --d-basic:#4cc79f;
-  --d-inter:#e0a94f;
-  --d-adv:#b283ef;
-
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.36);
+  --bg:#0c0e16; --surface:#141826; --surface-2:#1b2030; --border:#272d41; --border-strong:#39415b;
+  --text:#e9ebf5; --muted:#9aa1bd; --faint:#6a7291;
+  --accent:#8785f6; --accent-hi:#9d9bff; --accent-soft:rgba(135,133,246,.14); --accent-line:rgba(135,133,246,.32);
+  --L-system:#8b93b2; --L-system-s:rgba(139,147,178,.16);
+  --L-sales:#5aa0ff;  --L-sales-s:rgba(90,160,255,.16);
+  --L-prexa:#a989ff;  --L-prexa-s:rgba(169,137,255,.16);
+  --L-client:#3fc29c; --L-client-s:rgba(63,194,156,.16);
+  --L-active:#e9b35a; --L-active-s:rgba(233,179,90,.18);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 36px rgba(0,0,0,.4);
 }
 
 *{box-sizing:border-box}
-html{scroll-padding-top:env(safe-area-inset-top,0px);-webkit-text-size-adjust:100%}
-body{
-  margin:0;background:var(--bg);color:var(--text);
-  font-family:var(--font-body);font-size:15px;line-height:1.55;
-  -webkit-font-smoothing:antialiased;
-}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--fb);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer}
-::selection{background:var(--accent-soft)}
-
-/* ---------- shell ---------- */
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
 
-header.top{
-  position:sticky;top:0;z-index:40;
-  padding-top:env(safe-area-inset-top,0px);
-  background:color-mix(in srgb,var(--bg) 82%,transparent);
-  backdrop-filter:blur(14px);
-  border-bottom:1px solid var(--border);
-}
-.top-inner{display:flex;align-items:center;gap:18px;height:62px}
-.brand{display:flex;align-items:center;gap:11px;min-width:0}
-.mark{
-  width:32px;height:32px;border-radius:9px;flex:0 0 auto;
-  background:linear-gradient(145deg,var(--accent-hi),var(--accent));
-  display:grid;place-items:center;color:#fff;font-family:var(--font-head);
-  font-weight:700;font-size:15px;box-shadow:0 2px 10px var(--accent-line);
-}
-.brand h1{font-family:var(--font-head);font-weight:600;font-size:17px;margin:0;letter-spacing:-.01em}
-.brand .sub{font-size:12px;color:var(--faint);margin-top:1px}
-.brand .col{min-width:0}
-
-.top-right{margin-left:auto;display:flex;align-items:center;gap:14px}
-.mastery{display:flex;align-items:center;gap:10px}
-.ring{width:38px;height:38px;transform:rotate(-90deg)}
-.ring .track{stroke:var(--border-strong);fill:none;stroke-width:4}
-.ring .bar{stroke:var(--accent);fill:none;stroke-width:4;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.4,0,.2,1)}
-.mastery .m-num{font-family:var(--font-head);font-weight:600;font-size:15px;line-height:1}
-.mastery .m-lab{font-size:11px;color:var(--faint);line-height:1.2}
-.icon-btn{
-  width:38px;height:38px;border-radius:10px;border:1px solid var(--border);
-  background:var(--surface);color:var(--muted);display:grid;place-items:center;
-  transition:border-color .15s,color .15s;
-}
-.icon-btn:hover{border-color:var(--border-strong);color:var(--text)}
+header.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 84%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.top-inner{display:flex;align-items:center;gap:12px;height:60px}
+.mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(145deg,var(--accent-hi),var(--accent));display:grid;place-items:center;color:#fff;font-family:var(--fh);font-weight:700;box-shadow:0 2px 10px var(--accent-line);flex:0 0 auto}
+.top h1{font-family:var(--fh);font-weight:600;font-size:16px;margin:0;letter-spacing:-.01em}
+.top .sub{font-size:12px;color:var(--faint)}
+.icon-btn{margin-left:auto;width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:grid;place-items:center}
 .icon-btn svg{width:18px;height:18px}
 
-/* tabs */
-.tabs{display:flex;gap:4px;padding:10px 0 0}
-.tab{
-  border:none;background:none;color:var(--muted);font-weight:500;font-size:14px;
-  padding:9px 14px;border-radius:9px 9px 0 0;position:relative;
-}
-.tab[aria-selected="true"]{color:var(--text)}
-.tab[aria-selected="true"]::after{
-  content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:2px;
-  background:var(--accent);border-radius:2px;
-}
-.tab .n{font-family:var(--font-mono);font-size:11px;color:var(--faint);margin-left:7px}
+main{padding:26px 0 70px}
+.lede{max-width:760px;margin-bottom:8px}
+.lede h2{font-family:var(--fh);font-weight:600;font-size:clamp(22px,3.4vw,30px);letter-spacing:-.02em;margin:0 0 10px;line-height:1.15}
+.lede p{color:var(--muted);margin:0 0 14px}
+.insight{border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 16px;border-radius:0 10px 10px 0;font-size:14.5px}
+.insight b{color:var(--accent-hi)}
 
-main{padding:22px 0 72px}
+.section-h{font-family:var(--fh);font-weight:600;font-size:13px;letter-spacing:.04em;color:var(--faint);margin:34px 0 14px;text-transform:uppercase}
 
-/* ---------- toolbar ---------- */
-.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:18px}
-.chips{display:flex;flex-wrap:wrap;gap:7px}
-.chip{
-  border:1px solid var(--border);background:var(--surface);color:var(--muted);
-  padding:6px 12px;border-radius:999px;font-size:13px;font-weight:500;
-  transition:all .14s;
-}
-.chip:hover{border-color:var(--border-strong);color:var(--text)}
-.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-hi)}
-.chip .c{font-family:var(--font-mono);font-size:11px;opacity:.75;margin-left:5px}
-.grow{flex:1 1 auto}
-.search{
-  display:flex;align-items:center;gap:8px;border:1px solid var(--border);
-  background:var(--surface);border-radius:10px;padding:0 11px;height:38px;min-width:190px;
-}
-.search:focus-within{border-color:var(--accent-line)}
-.search svg{width:15px;height:15px;color:var(--faint);flex:0 0 auto}
-.search input{border:none;background:none;outline:none;color:var(--text);font-size:14px;width:100%;font-family:inherit}
-.btn-ghost{
-  border:1px solid var(--border);background:var(--surface);color:var(--muted);
-  height:38px;padding:0 13px;border-radius:10px;font-size:13px;font-weight:500;
-  transition:all .14s;display:inline-flex;align-items:center;gap:7px;
-}
-.btn-ghost:hover{border-color:var(--bad);color:var(--bad)}
+/* ---- interactive core ---- */
+.stage{display:grid;grid-template-columns:1.15fr 1fr;gap:22px;align-items:start}
+.card{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow)}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.card-h .t{font-family:var(--fh);font-weight:600;font-size:14.5px}
+.card-h .hint{font-size:12px;color:var(--faint);margin-left:auto}
 
-/* ---------- practice grid ---------- */
-.practice{display:grid;grid-template-columns:288px 1fr;gap:24px;align-items:start}
+/* stack */
+.stack{padding:14px;display:flex;flex-direction:column-reverse;gap:10px}
+/* column-reverse: DOM order bottom→top, visual order top→bottom */
+.layer{position:relative;display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);padding:12px 14px 12px 16px;transition:opacity .25s,filter .25s,border-color .2s,box-shadow .2s}
+.layer::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px;background:var(--lc);opacity:.5;transition:opacity .2s}
+.layer .rail{position:absolute;left:-1px;top:0;width:4px;background:var(--accent);border-radius:4px;height:0;opacity:0}
+.layer.off{opacity:.42;filter:saturate(.3)}
+.layer.off .body .sets{opacity:.5}
+.layer .eye{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);display:grid;place-items:center}
+.layer .eye svg{width:16px;height:16px}
+.layer .body{flex:1;min-width:0}
+.layer .nm{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.layer .nm .name{font-family:var(--fh);font-weight:600;font-size:14px}
+.badge{font-family:var(--fm);font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;letter-spacing:.02em}
+.badge.managed{background:var(--L-system-s);color:var(--muted)}
+.badge.unmanaged{background:var(--L-active-s);color:var(--L-active)}
+.badge.pfx{background:var(--lc-s);color:var(--lc)}
+.layer .sets{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.pill{font-family:var(--fm);font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);color:var(--muted);background:var(--surface-2);display:inline-flex;gap:6px;align-items:center;transition:all .2s}
+.pill .k{color:var(--faint)}
+.pill.win{border-color:var(--lc);background:var(--lc-s);color:var(--lc);box-shadow:0 0 0 1px var(--lc) inset}
+.pill.overridden{text-decoration:line-through;opacity:.55}
+/* scan states */
+.layer.hit{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 8px 22px var(--accent-line)}
+.layer.hit .rail{opacity:1;height:100%;transition:height .35s ease}
+.layer.pass .rail{opacity:.65;height:100%;transition:height .3s ease}
+.layer.below{opacity:.5}
+.hitflag{display:none;font-family:var(--fm);font-size:10px;font-weight:600;color:#fff;background:var(--accent);padding:2px 7px;border-radius:5px;margin-left:auto}
+.layer.hit .hitflag{display:inline-block}
 
-/* question list */
-.qlist{
-  border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
-  overflow:hidden;position:sticky;top:132px;max-height:calc(100vh - 160px);display:flex;flex-direction:column;
-}
-.qlist-head{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline}
-.qlist-head .t{font-family:var(--font-head);font-weight:600;font-size:14px}
-.qlist-head .c{font-size:12px;color:var(--faint);font-family:var(--font-mono)}
-.qlist-scroll{overflow-y:auto;padding:6px}
-.qrow{
-  display:flex;gap:11px;align-items:flex-start;width:100%;text-align:left;
-  border:none;background:none;color:var(--text);padding:10px 10px;border-radius:9px;
-  transition:background .12s;
-}
-.qrow:hover{background:var(--surface-2)}
-.qrow[aria-current="true"]{background:var(--accent-soft)}
-.qrow[aria-current="true"] .qr-title{color:var(--accent-hi)}
-.dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;margin-top:6px;border:1.5px solid var(--border-strong);background:transparent}
-.dot.ok{background:var(--ok);border-color:var(--ok)}
-.dot.bad{background:var(--bad);border-color:var(--bad)}
-.qr-body{min-width:0;flex:1}
-.qr-title{font-size:13px;font-weight:500;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.qr-meta{display:flex;gap:6px;align-items:center;margin-top:4px}
-.qr-meta .tp{font-size:11px;color:var(--faint)}
-.bk{margin-left:auto;color:var(--faint);flex:0 0 auto;background:none;border:none;padding:2px;border-radius:5px}
-.bk svg{width:14px;height:14px}
-.bk.on{color:var(--warn)}
+/* resolved panel */
+.resolved{position:sticky;top:76px}
+.propsel{display:flex;flex-wrap:wrap;gap:7px;padding:14px 16px 4px}
+.ps{border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:999px;transition:all .15s}
+.ps[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-hi)}
+.runtime{padding:8px 16px 4px}
+.rrow{display:flex;align-items:center;gap:12px;padding:12px 12px;border-radius:var(--radius-sm);border:1px solid transparent;transition:background .15s,border-color .15s;width:100%;text-align:left;background:none}
+.rrow:hover{background:var(--surface-2)}
+.rrow.active{background:var(--surface-2);border-color:var(--border)}
+.rrow .rk{font-size:13px;color:var(--muted);width:118px;flex:0 0 auto}
+.rrow .rv{font-family:var(--fm);font-weight:600;font-size:14px;flex:1;min-width:0}
+.rrow .src{font-family:var(--fm);font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--lc-s);color:var(--lc);white-space:nowrap}
+.rrow.hidden-val .rv{color:var(--faint);font-style:italic}
+.narr{margin:8px 16px 16px;padding:12px 14px;border-radius:var(--radius-sm);background:var(--surface-2);font-size:13.5px;line-height:1.5;border:1px solid var(--border)}
+.narr b{color:var(--text)}
 
-/* question panel */
-.panel{
-  border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden;
-}
-.p-head{padding:18px 22px 0;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
-.badge{font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:7px;font-family:var(--font-mono);letter-spacing:.01em}
-.badge.topic{background:var(--accent-soft);color:var(--accent-hi)}
-.badge.type{background:var(--surface-2);color:var(--muted)}
-.badge.basic{background:color-mix(in srgb,var(--d-basic) 15%,transparent);color:var(--d-basic)}
-.badge.intermediate{background:color-mix(in srgb,var(--d-inter) 15%,transparent);color:var(--d-inter)}
-.badge.advanced{background:color-mix(in srgb,var(--d-adv) 16%,transparent);color:var(--d-adv)}
-.badge.new{background:var(--warn-soft);color:var(--warn)}
-.p-head .sp{flex:1}
-.p-num{font-family:var(--font-mono);font-size:12px;color:var(--faint)}
+/* scenarios */
+.scn-row{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:12px}
+.scn{border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:13px;font-weight:500;padding:9px 14px;border-radius:10px;transition:all .15s;text-align:left;box-shadow:var(--shadow)}
+.scn:hover{border-color:var(--accent-line);color:var(--accent-hi)}
+.scn small{display:block;color:var(--faint);font-weight:400;font-size:11.5px;margin-top:2px}
+.scn.reset{box-shadow:none;background:var(--surface-2)}
+.scn-note{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);padding:14px 16px;font-size:14px;line-height:1.55;box-shadow:var(--shadow);display:none}
+.scn-note.show{display:block}
+.scn-note .tag{font-family:var(--fm);font-size:10.5px;font-weight:600;color:var(--accent-hi);background:var(--accent-soft);padding:3px 8px;border-radius:5px;margin-right:8px}
+.scn-note b{color:var(--text)}
 
-.q-text{padding:16px 22px 4px;font-size:18px;line-height:1.5;font-family:var(--font-head);font-weight:500;letter-spacing:-.01em}
-.q-sub{padding:0 22px;color:var(--muted);font-size:14px}
+/* flowchart */
+.flow{display:flex;flex-direction:column;align-items:center;gap:0;max-width:520px;margin:0 auto}
+.fnode{border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px 16px;text-align:center;font-size:13.5px;width:100%;box-shadow:var(--shadow)}
+.fnode.q{border-color:var(--accent-line);background:var(--accent-soft)}
+.fnode.end{border-color:var(--L-client);background:var(--L-client-s);font-weight:600}
+.fnode b{font-family:var(--fh)}
+.farrow{width:2px;height:22px;background:var(--border-strong);position:relative}
+.farrow::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--border-strong)}
+.fsplit{display:flex;gap:14px;width:100%}
+.fbranch{flex:1;display:flex;flex-direction:column;align-items:center}
+.flabel{font-family:var(--fm);font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px;margin-bottom:6px}
+.flabel.yes{background:var(--L-client-s);color:var(--L-client)}
+.flabel.no{background:var(--L-active-s);color:var(--L-active)}
+.floop{font-family:var(--fm);font-size:11px;color:var(--faint);margin-top:6px}
 
-.options{padding:14px 22px 4px;display:flex;flex-direction:column;gap:9px}
-.opt{
-  display:flex;gap:13px;align-items:flex-start;text-align:left;width:100%;
-  border:1px solid var(--border);background:var(--surface);color:var(--text);
-  padding:13px 15px;border-radius:var(--radius-sm);transition:border-color .14s,background .14s;
-}
-.opt:hover:not(:disabled){border-color:var(--border-strong)}
-.opt:disabled{cursor:default}
-.opt .key{
-  width:24px;height:24px;border-radius:6px;flex:0 0 auto;display:grid;place-items:center;
-  border:1px solid var(--border-strong);font-family:var(--font-mono);font-size:12.5px;font-weight:500;
-  color:var(--muted);transition:all .14s;
-}
-.opt .ot{font-size:14.5px;line-height:1.45;padding-top:1px}
-.opt.sel{border-color:var(--accent);background:var(--accent-soft)}
-.opt.sel .key{background:var(--accent);border-color:var(--accent);color:#fff}
-.opt.correct{border-color:var(--ok);background:var(--ok-soft)}
-.opt.correct .key{background:var(--ok);border-color:var(--ok);color:#fff}
-.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
-.opt.wrong .key{background:var(--bad);border-color:var(--bad);color:#fff}
-.opt .res{margin-left:auto;flex:0 0 auto}
-.opt .res svg{width:18px;height:18px}
+/* concept accordion */
+.acc{border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow)}
+.acc summary{list-style:none;padding:15px 18px;display:flex;align-items:center;gap:12px;font-family:var(--fh);font-weight:600;font-size:15px}
+.acc summary::-webkit-details-marker{display:none}
+.acc summary:hover{background:var(--surface-2)}
+.acc .cx{margin-left:auto;color:var(--muted);transition:transform .2s}
+.acc[open] .cx{transform:rotate(180deg)}
+.acc .ab{padding:2px 18px 18px;border-top:1px solid var(--border);font-size:14px;color:var(--text)}
+.acc .ab p{margin:12px 0}.acc .ab ul{margin:10px 0;padding-left:20px}.acc .ab li{margin:6px 0}
+.acc .ab code{font-family:var(--fm);font-size:12.5px;background:var(--accent-soft);color:var(--accent-hi);padding:1.5px 5px;border-radius:5px}
+.acc .ab b{font-weight:600}
+.dmark{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
 
-.p-actions{padding:16px 22px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.btn{
-  border:none;border-radius:10px;font-weight:600;font-size:14px;padding:11px 20px;
-  background:var(--accent);color:#fff;transition:filter .14s,opacity .14s;
-  box-shadow:0 2px 10px var(--accent-line);
-}
-.btn:hover:not(:disabled){filter:brightness(1.07)}
-.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
-.btn.sec{background:var(--surface-2);color:var(--text);box-shadow:none}
-.btn.sec:hover:not(:disabled){background:var(--border)}
-.nav-mini{margin-left:auto;display:flex;gap:8px}
-.nav-mini button{
-  width:38px;height:38px;border-radius:10px;border:1px solid var(--border);background:var(--surface);
-  color:var(--muted);display:grid;place-items:center;transition:all .14s;
-}
-.nav-mini button:hover:not(:disabled){border-color:var(--border-strong);color:var(--text)}
-.nav-mini button:disabled{opacity:.4;cursor:not-allowed}
-.nav-mini svg{width:17px;height:17px}
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);color:var(--faint);font-size:12.5px}
 
-/* feedback + solution */
-.feedback{
-  margin:0 22px;padding:12px 15px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;
-  display:none;align-items:center;gap:9px;
+@media (max-width:840px){
+  .stage{grid-template-columns:1fr}
+  .resolved{position:static}
+  .fsplit{flex-direction:column;gap:0}
 }
-.feedback.show{display:flex}
-.feedback.ok{background:var(--ok-soft);color:var(--ok)}
-.feedback.bad{background:var(--bad-soft);color:var(--bad)}
-.feedback svg{width:17px;height:17px;flex:0 0 auto}
-
-.solution{
-  margin:14px 22px 22px;border:1px solid var(--border);border-radius:var(--radius-sm);
-  background:var(--surface-2);overflow:hidden;display:none;
-}
-.solution.show{display:block;animation:reveal .35s ease}
-@keyframes reveal{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
-.sol-head{
-  padding:13px 17px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;
-}
-.sol-head .tag{font-family:var(--font-mono);font-size:10.5px;color:var(--accent-hi);background:var(--accent-soft);padding:3px 7px;border-radius:5px;font-weight:600}
-.sol-head .h{font-family:var(--font-head);font-weight:600;font-size:15px;flex:1;min-width:0}
-.copy-btn{border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:12px;padding:5px 10px;border-radius:7px;display:inline-flex;gap:6px;align-items:center;transition:all .14s}
-.copy-btn:hover{border-color:var(--border-strong);color:var(--text)}
-.copy-btn svg{width:13px;height:13px}
-.sol-body{padding:6px 18px 16px}
-
-/* prose */
-.prose{color:var(--text);font-size:14.5px}
-.prose p{margin:12px 0}
-.prose strong{font-weight:600}
-.prose ul{margin:11px 0;padding-left:20px}
-.prose li{margin:6px 0}
-.prose h4{font-family:var(--font-head);font-size:14.5px;font-weight:600;margin:18px 0 8px}
-.prose code{font-family:var(--font-mono);font-size:12.5px;background:var(--accent-soft);color:var(--accent-hi);padding:1.5px 5px;border-radius:5px}
-.prose pre{
-  font-family:var(--font-mono);font-size:12.5px;line-height:1.55;background:var(--surface);
-  border:1px solid var(--border);border-radius:9px;padding:13px 15px;overflow-x:auto;margin:12px 0;color:var(--text);
-}
-.prose pre code{background:none;color:inherit;padding:0}
-.prose table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px;display:block;overflow-x:auto}
-.prose th,.prose td{border:1px solid var(--border);padding:8px 11px;text-align:left;vertical-align:top}
-.prose th{background:var(--surface);font-weight:600;font-family:var(--font-head);white-space:nowrap}
-.callout{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:14px 0}
-.callout.key{border-color:var(--warn);background:var(--warn-soft)}
-
-/* notes */
-.notes-intro{max-width:720px;margin-bottom:22px}
-.notes-intro h2{font-family:var(--font-head);font-weight:600;font-size:22px;margin:0 0 6px;letter-spacing:-.015em}
-.notes-intro p{color:var(--muted);margin:0}
-.note{
-  border:1px solid var(--border);background:var(--surface);border-radius:var(--radius);
-  margin-bottom:12px;overflow:hidden;
-}
-.note-head{
-  display:flex;align-items:center;gap:13px;width:100%;text-align:left;border:none;
-  background:none;color:var(--text);padding:16px 20px;
-}
-.note-head::-webkit-details-marker{display:none}
-.note-head:hover{background:var(--surface-2)}
-.note-ix{font-family:var(--font-mono);font-size:12px;color:var(--faint);width:22px;flex:0 0 auto}
-.note-head .nt{font-family:var(--font-head);font-weight:600;font-size:16px;flex:1;letter-spacing:-.01em}
-.note-head .tp{font-size:12px;color:var(--faint);margin-right:4px}
-.note-head .caret{transition:transform .2s;color:var(--muted)}
-.note-head .caret svg{width:18px;height:18px}
-.note[open] .caret{transform:rotate(180deg)}
-.note-body{padding:2px 20px 20px;border-top:1px solid var(--border)}
-
-/* empty */
-.empty{border:1px dashed var(--border-strong);border-radius:var(--radius);padding:48px 24px;text-align:center;color:var(--muted)}
-.empty .big{font-family:var(--font-head);font-weight:600;font-size:17px;color:var(--text);margin-bottom:6px}
-
-.hidden{display:none!important}
-.list-toggle{display:none}
-
-.toast{
-  position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
-  background:var(--text);color:var(--bg);font-size:13px;font-weight:500;padding:9px 16px;border-radius:9px;
-  box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:80;
-}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* ---------- responsive ---------- */
-@media (max-width:860px){
-  .practice{grid-template-columns:1fr}
-  .qlist{position:fixed;inset:0;top:0;z-index:60;max-height:100vh;border-radius:0;
-    padding-top:env(safe-area-inset-top,0px);transform:translateX(-100%);transition:transform .25s}
-  .qlist.open{transform:none}
-  .qlist-head .close{display:grid}
-  .list-toggle{display:inline-flex;align-items:center;gap:7px}
-  .brand .sub{display:none}
-  .q-text{font-size:16.5px}
-}
-.qlist-head .close{display:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);place-items:center}
-.qlist-head .close svg{width:16px;height:16px}
-
-@media (prefers-reduced-motion:reduce){
-  *{transition:none!important;animation:none!important}
-}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
-
 <header class="top">
   <div class="wrap top-inner">
-    <div class="brand">
-      <div class="mark">D</div>
-      <div class="col">
-        <h1>D365 Prep</h1>
-        <div class="sub" id="brandSub">Dynamics 365 interview drill</div>
-      </div>
+    <div class="mark">L</div>
+    <div>
+      <h1>Solution Layering</h1>
+      <div class="sub">How Dataverse decides what a component actually does</div>
     </div>
-    <div class="top-right">
-      <div class="mastery" title="Share of questions answered correctly">
-        <svg class="ring" viewBox="0 0 38 38">
-          <circle class="track" cx="19" cy="19" r="16"></circle>
-          <circle class="bar" id="ringBar" cx="19" cy="19" r="16" stroke-dasharray="100.5" stroke-dashoffset="100.5"></circle>
-        </svg>
-        <div>
-          <div class="m-num" id="masteryNum">0%</div>
-          <div class="m-lab">mastery</div>
-        </div>
-      </div>
-      <button class="icon-btn" id="themeBtn" title="Switch light / dark" aria-label="Switch theme"></button>
-    </div>
-  </div>
-  <div class="wrap">
-    <div class="tabs" role="tablist">
-      <button class="tab" id="tabPractice" role="tab" aria-selected="true">Practice<span class="n" id="practiceCount"></span></button>
-      <button class="tab" id="tabNotes" role="tab" aria-selected="false">Notes<span class="n" id="notesCount"></span></button>
-    </div>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle theme"></button>
   </div>
 </header>
 
 <main class="wrap">
+  <div class="lede">
+    <h2>One field. Five solutions touching it. Which value wins?</h2>
+    <p>Every table, column, form and view can be defined in more than one solution. The platform stacks those definitions into <b>layers</b> and, at runtime, resolves the live behaviour from the top down. Toggle the layers below and watch the resolved value change.</p>
+    <div class="insight"><b>The insight most people miss:</b> the merge happens <b>per property</b>, not per layer. "Display Name" can come from one layer while "Max Value" comes from another — the winner is decided independently for every single property.</div>
+  </div>
 
-  <!-- PRACTICE -->
-  <section id="viewPractice">
-    <div class="toolbar">
-      <div class="chips" id="topicChips"></div>
-      <div class="grow"></div>
-      <div class="chips" id="statusChips"></div>
-      <label class="search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <input id="searchInput" type="search" placeholder="Search questions…" autocomplete="off">
-      </label>
-      <button class="list-toggle btn-ghost" id="listToggle" style="border-color:var(--border);color:var(--muted)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-        All
-      </button>
-      <button class="btn-ghost" id="resetBtn" title="Clear all saved progress">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
-        Reset
-      </button>
+  <div class="section-h">Live resolver — Account · "Credit Limit" column</div>
+  <div class="stage">
+    <!-- LEFT: layer stack -->
+    <div class="card">
+      <div class="card-h"><span class="t">Solution layers</span><span class="hint">top wins · click the eye to remove a layer</span></div>
+      <div class="stack" id="stack"></div>
     </div>
 
-    <div class="practice">
-      <aside class="qlist" id="qlist">
-        <div class="qlist-head">
-          <span class="t">Questions</span>
-          <span class="c" id="qlistCount"></span>
-          <button class="close" id="qlistClose" aria-label="Close list">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-        <div class="qlist-scroll" id="qlistScroll"></div>
-      </aside>
-
-      <div id="panelHost"></div>
+    <!-- RIGHT: resolved -->
+    <div class="card resolved">
+      <div class="card-h"><span class="t">Resolved at runtime</span><span class="hint">pick a property to trace it</span></div>
+      <div class="propsel" id="propsel"></div>
+      <div class="runtime" id="runtime"></div>
+      <div class="narr" id="narr"></div>
     </div>
-  </section>
+  </div>
 
-  <!-- NOTES -->
-  <section id="viewNotes" class="hidden">
-    <div class="notes-intro">
-      <h2>Concept notes</h2>
-      <p>The long-form reference behind the drills — written to drop straight into your own notes. Expand a topic to read it.</p>
+  <div class="section-h">Real cases — press one, watch the stack</div>
+  <div class="scn-row" id="scnRow"></div>
+  <div class="scn-note" id="scnNote"></div>
+
+  <div class="section-h">How the platform resolves a value</div>
+  <div class="flow">
+    <div class="fnode"><b>App asks for a property's value</b><br><span style="color:var(--muted);font-size:12.5px">e.g. "what is Credit Limit's Required level?"</span></div>
+    <div class="farrow"></div>
+    <div class="fnode">Go to the <b>top-most layer</b><br><span style="color:var(--muted);font-size:12.5px">Unmanaged (Active) if it exists</span></div>
+    <div class="farrow"></div>
+    <div class="fnode q">Does <b>this layer</b> define the property?</div>
+    <div class="fsplit">
+      <div class="fbranch">
+        <div class="farrow"></div>
+        <span class="flabel yes">YES</span>
+        <div class="fnode end">Use this value — stop</div>
+      </div>
+      <div class="fbranch">
+        <div class="farrow"></div>
+        <span class="flabel no">NO</span>
+        <div class="fnode">Drop down one layer</div>
+        <div class="floop">↻ repeat until the base platform</div>
+      </div>
     </div>
-    <div id="notesHost"></div>
-  </section>
+  </div>
 
+  <div class="section-h">The concepts, connected</div>
+
+  <details class="acc">
+    <summary><span class="dmark" style="background:var(--L-active)"></span>Managed vs Unmanaged — and why only one is reversible<span class="cx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+    <div class="ab">
+      <p><b>Unmanaged</b> = editable source. Your dev environment is unmanaged; direct edits land in the <b>Active</b> layer, which sits on top of everything.</p>
+      <p><b>Managed</b> = sealed output. You export managed and import into test/prod. Its components are locked and, crucially, <b>removable</b> — uninstall the solution and its layer lifts off cleanly, revealing whatever was beneath.</p>
+      <ul>
+        <li>An <b>unmanaged</b> layer can never be "uninstalled" — there's nothing to remove it from. You can only delete the component or <b>remove the active customization</b> (which drops you to the managed value below).</li>
+        <li>This is why shipping everything unmanaged to production is an architect's red flag: it can't be cleanly upgraded or rolled back.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="acc">
+    <summary><span class="dmark" style="background:var(--L-prexa)"></span>"My managed update won't show up"<span class="cx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+    <div class="ab">
+      <p>Classic production mystery. You ship a fix in a managed solution, it imports fine, but the old behaviour persists.</p>
+      <p><b>Cause:</b> someone once edited that component directly in production, creating an <b>Unmanaged (Active) layer</b> on top. The active layer wins over every managed layer below — including your new one. Your update <em>is</em> installed; it's just buried.</p>
+      <p><b>Fix:</b> on the component, <b>Remove Active Customization</b>. The active layer lifts off and your managed value surfaces. Then enforce "no direct edits in prod" so it doesn't recur. Try the first scenario button above to see it.</p>
+    </div>
+  </details>
+
+  <details class="acc">
+    <summary><span class="dmark" style="background:var(--L-client)"></span>Two ISV solutions touch the same field<span class="cx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+    <div class="ab">
+      <p>When two managed solutions both set the same property, the one <b>imported later</b> lands in a higher layer and wins — order of installation becomes behaviour. This is why publisher prefixes (<code>avpx_</code>, <code>av_</code>) and clear solution boundaries matter: they keep ownership legible and collisions rare.</p>
+      <p><b>Architect move:</b> don't let your solution redefine components another solution owns unless you mean to. Depend on them, extend alongside them, but avoid silent overrides you'll forget about in a year.</p>
+    </div>
+  </details>
+
+  <details class="acc">
+    <summary><span class="dmark" style="background:var(--L-sales)"></span>Where Dynamics 365's own apps sit<span class="cx"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+    <div class="ab">
+      <p>Dynamics 365 Sales, Customer Service, Field Service — these are just <b>managed solutions</b> sitting near the bottom of the stack, on top of the base platform. Your solutions layer above them.</p>
+      <p>That's the whole trick: there is no separate "Dynamics engine." Microsoft's apps and your PREXA365 customisations are the same <em>kind</em> of thing, resolved by the same layering rules. Once you see that, the platform stops being magic.</p>
+    </div>
+  </details>
+
+  <footer>Interactive explainer · values are illustrative, chosen to show the resolution rules. The mechanism — top-most layer wins, merged per property, managed layers removable — is real.</footer>
 </main>
 
-<div class="toast" id="toast"></div>
-
 <script>
-/* ============================================================
-   DATA  — append new questions to QUESTIONS and new concept
-   docs to NOTES each session. `date` drives the "New" badge
-   and the "New" filter. Keep ids stable.
-   ============================================================ */
-
-const BANK_DATE = "2026-10-08"; // last content update
-
-const QUESTIONS = [
-  {
-    id:"bru-001", topic:"Business Rules", type:"MCQ", difficulty:"Basic", date:"2026-10-07",
-    q:"In a Model-Driven App you need a field to be required only when another field holds a specific value. What's the correct approach?",
-    options:[
-      "Set the field as Business Required in the field metadata",
-      "Use a Business Rule with scope \"Entity\"",
-      "Use a Business Rule scoped to the form, with a condition plus a \"Set Business Required\" action",
-      "Use a synchronous plugin on Save"
-    ],
-    correct:2,
-    header:"Conditional Business Required — Business Rule (Form Scope)",
-    solution:`
-<p>Use a <strong>Business Rule scoped to the form</strong>: a condition on the trigger field, then a <strong>Set Business Required</strong> action on the target field.</p>
-<ul>
-<li><strong>A</strong> makes the field <em>always</em> required — not conditional.</li>
-<li><strong>B</strong> (Entity scope) gives no advantage here: <code>Set Business Required</code> only applies on the form, it isn't enforced server-side. So running at Entity scope buys you nothing for this action.</li>
-<li><strong>D</strong> works but is overkill and poor UX — the user only learns the field is required when the save fails.</li>
-</ul>
-<div class="callout key"><strong>Key:</strong> Business-rule "required" is a <em>form-level</em> behaviour. For true server-side enforcement you'd need a plugin or a column-level requirement — not a business rule.</div>`
-  },
-  {
-    id:"plg-stage-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-07",
-    q:"A plugin must run only after the record is committed, so you can reliably read its generated GUID and then fire a call to a slow external system. Which stage + mode?",
-    options:[
-      "Pre-Validation, Synchronous",
-      "Pre-Operation, Synchronous",
-      "Post-Operation, Synchronous",
-      "Post-Operation, Asynchronous"
-    ],
-    correct:3,
-    header:"Choosing Stage + Mode for Post-Commit External Calls",
-    solution:`
-<p>The GUID is available in <strong>any Post-Operation</strong> step (sync or async), so the stage is Post-Operation. The deciding factor is the <strong>external call</strong>, which pushes you to <strong>Async</strong>.</p>
-<ul>
-<li><strong>Sync</strong> holds the user's transaction open while the HTTP call runs — blocks the user, risks the 2-minute sandbox limit, and a network failure rolls back the whole save.</li>
-<li><strong>Async</strong> runs after the save, in its own transaction — safe for slow or unreliable APIs.</li>
-</ul>
-<div class="callout"><strong>Why not C:</strong> Post-Op Sync also exposes the GUID, but running an external call synchronously is the anti-pattern. External I/O → Async (or hand off to a queue / Power Automate).</div>`
-  },
-  {
-    id:"plg-race-001", topic:"Plugins", type:"Scenario", difficulty:"Advanced", date:"2026-10-07",
-    q:"A Create plugin sets Account Number by reading the current MAX and adding 1. Occasionally two records created at nearly the same moment get the same number. Explain the root cause and the architect-level fix.",
-    options:null,
-    header:"Duplicate Auto-Number Under Concurrency (Race Condition)",
-    solution:`
-<h4>Root cause</h4>
-<p>The plugin uses a <strong>read-then-write</strong> pattern (RetrieveMultiple MAX → +1 → set). Dataverse runs plugins <strong>in parallel</strong>, each in its own transaction. Two executions both run the "read MAX" step before either commits, so both read the same value and both write the same next number — a classic <strong>race condition</strong>.</p>
-<pre><code>T1  A: read MAX -> 1002
-T2  B: read MAX -> 1002   (A hasn't committed yet)
-T3  A: write 1003
-T4  B: write 1003         // duplicate</code></pre>
-<p>Async makes it <em>worse</em> (more parallelism). Changing sync stage doesn't help — the race is in the read, not the stage.</p>
-<h4>Fix (in order of preference)</h4>
-<ul>
-<li><strong>Native Autonumber column</strong> — platform generates values server-side, unique under concurrency, no code. Supports prefix/date/seed. Trade-off: can leave gaps, limited format flexibility.</li>
-<li><strong>Counter row + optimistic concurrency</strong> (when you need custom logic like yearly reset): retrieve a sequence record <em>with its <code>RowVersion</code></em>, increment, update with <code>ConcurrencyBehavior.IfRowVersionMatches</code>; on conflict, catch and retry in a bounded loop.</li>
-<li><strong>Unique Alternate Key</strong> (always, as a safety net): the DB physically rejects a duplicate; pair with a retry so the loser just regenerates.</li>
-</ul>
-<div class="callout key"><strong>Key:</strong> Never compute sequential numbers with RetrieveMultiple-MAX. Prefer native Autonumber; else counter row + RowVersion + retry; and always back it with a unique alternate key.</div>`
-  },
-  {
-    id:"plg-race-002", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-07",
-    q:"Why does switching the auto-number plugin to Asynchronous NOT fix the duplicate-number problem?",
-    options:[
-      "Async plugins can't write data",
-      "Async still runs in parallel, so two instances can still read the same MAX before either writes",
-      "Async plugins don't support RetrieveMultiple",
-      "Async disables transactions entirely"
-    ],
-    correct:1,
-    header:"Why Async Doesn't Fix the Race",
-    solution:`
-<p>Sync vs async changes <strong>when</strong> the code runs and its <strong>transaction scope</strong> — not whether executions run one-at-a-time. Async is still parallel (often <em>more</em> so). The race lives in the read-then-write pattern, so the mode is irrelevant.</p>
-<div class="callout key"><strong>Mental model:</strong> Sync/Async answers "when does it run + does it block the user?" — not "do they run serially?" Neither mode serializes parallel executions.</div>`
-  },
-  {
-    id:"plg-mode-001", topic:"Plugins", type:"MCQ", difficulty:"Basic", date:"2026-10-07",
-    q:"A user creates a record. Which registration lets them see the record saved immediately, while a slow external API call runs in the background without making them wait?",
-    options:[
-      "Synchronous Pre-Operation",
-      "Synchronous Post-Operation",
-      "Asynchronous Post-Operation",
-      "Synchronous Pre-Validation"
-    ],
-    correct:2,
-    header:"Non-Blocking External Work → Async Post-Operation",
-    solution:`
-<p><strong>Async Post-Operation.</strong> Async runs in its own transaction <em>after</em> the save commits, so the user never waits; Post-Op guarantees the record (and its GUID) exists. Any synchronous option would make the user wait for the API call.</p>`
-  },
-  {
-    id:"plg-asyncfail-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-07",
-    q:"An Async Post-Op plugin pushes data to an external system. The external system is down, so the job fails. What's the state afterward?",
-    options:[
-      "The record is rolled back and not saved",
-      "The record is saved, but the external push didn't happen — data is now out of sync",
-      "The save is blocked and the user sees an error",
-      "The platform automatically keeps the record and the external system in sync"
-    ],
-    correct:1,
-    header:"Async Failure = Saved Record, Missing Side-Effect",
-    solution:`
-<p>Save and async job are <strong>two separate transactions at two different times</strong>. The save (T1) already committed, so the async job (T2) can't undo it. The record stays; only the background job fails — visible under <strong>System Jobs</strong>.</p>
-<p>This leaves a <strong>consistency gap</strong>: the record exists but its side-effect silently didn't complete.</p>
-<h4>How seniors handle it</h4>
-<ul>
-<li><code>IntegrationStatus</code> field on the record (Pending/Success/Failed) so you can query what didn't sync</li>
-<li>Try/catch → write failures to a custom log entity (visible to the business, not just admins)</li>
-<li>Monitor <code>AsyncOperation</code> where status = Failed; alert/re-queue via a scheduled flow</li>
-<li>Make the operation <strong>idempotent</strong> so retries are safe</li>
-</ul>`
-  },
-  {
-    id:"plg-sysjob-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-07",
-    q:"You query the AsyncOperation table and find a job stuck in Failed with a null-reference error. What's the correct understanding?",
-    options:[
-      "The platform will auto-retry until it succeeds",
-      "It's a non-transient (code) error — auto-retry won't fix it; a dev must correct the cause",
-      "The user's original record was also rolled back",
-      "Failed jobs are deleted instantly, so this can't happen"
-    ],
-    correct:1,
-    header:"Transient vs Non-Transient Async Failures",
-    solution:`
-<p><code>AsyncOperation</code> = the <strong>System Jobs</strong> table (the platform's queue for all deferred work: async plugins, background workflows, Dataverse-triggered flows, bulk ops).</p>
-<ul>
-<li><strong>Transient</strong> failures (SQL timeout, deadlock, throttling) → platform auto-retries with backoff, incrementing <code>RetryCount</code>.</li>
-<li><strong>Non-transient</strong> (null ref, bad data, business throw) → retrying won't help; the job stays <strong>Failed</strong> for manual review.</li>
-</ul>
-<p>The original record isn't rolled back — it was committed in a separate, earlier transaction.</p>`
-  },
-  {
-    id:"plg-idem-001", topic:"Plugins", type:"MCQ", difficulty:"Advanced", date:"2026-10-07",
-    q:"Why must an async plugin that calls an external API be idempotent?",
-    options:[
-      "Because async plugins can't use try/catch",
-      "Because the platform may retry the job, re-running the logic and risking duplicate side-effects",
-      "Because idempotency makes the plugin run faster",
-      "Because external APIs always reject the first call"
-    ],
-    correct:1,
-    header:"Idempotency for Retryable Async Side-Effects",
-    solution:`
-<p>On a transient failure the platform may <strong>retry the whole job from the start</strong>. If step 1 already created an external invoice and step 2 crashed, the retry creates the invoice <em>again</em> — a duplicate.</p>
-<p><strong>Idempotent</strong> = running it twice gives the same result as running it once. Make it so with:</p>
-<ul>
-<li><strong>Check-before-create</strong> — "does an invoice already exist for this record?"</li>
-<li><strong>Unique key / idempotency token</strong> the external API dedupes on</li>
-<li><strong>Progress flags</strong> on the record (<code>Step1Done = true</code>) so a retry resumes rather than repeats</li>
-</ul>
-<div class="callout key"><strong>Rule:</strong> Any async operation with external side-effects must assume it may run more than once.</div>`
-  },
-  {
-    id:"plg-order-001", topic:"Plugins", type:"Scenario", difficulty:"Intermediate", date:"2026-10-08",
-    q:"Two synchronous plugins are registered on Update of the same entity, same stage. Plugin B reads a field that Plugin A sets. Most of the time it works, but occasionally B sees the old value — and it's a single record, so it isn't a cross-record race. What's the cause and the fix?",
-    options:null,
-    header:"Step Dependency — Plugin Execution Order (Rank)",
-    solution:`
-<p>This is a <strong>step-ordering dependency</strong>, not a race condition. When two steps share the same message + stage, they run in ascending <strong>Execution Order</strong> (rank). If A and B have the <em>same</em> rank, the order between them is <strong>not guaranteed</strong> — sometimes B runs before A and reads the stale value.</p>
-<h4>Fix</h4>
-<ul>
-<li>Give the producer (A) a <strong>lower Execution Order</strong> than the consumer (B) so A always runs first.</li>
-<li>Better still: if B only exists to use A's output, fold the logic into one step — fewer ordering assumptions to maintain.</li>
-</ul>
-<div class="callout key"><strong>Trap:</strong> If A were <em>async</em>, B (sync) would never see its change in-pipeline at all — async runs after the transaction commits.</div>`
-  },
-  {
-    id:"plg-order-002", topic:"Plugins", type:"MCQ", difficulty:"Basic", date:"2026-10-08",
-    q:"You have two plugin steps on the same message and stage and need one to always run before the other. How do you control this?",
-    options:[
-      "Register both as Asynchronous",
-      "Set a lower Execution Order (rank) on the step that must run first",
-      "Rename the plugin classes alphabetically",
-      "Put them in separate solutions"
-    ],
-    correct:1,
-    header:"Controlling Step Order with Execution Order (Rank)",
-    solution:`
-<p>Steps on the same message + stage execute in ascending <strong>Execution Order</strong>; the lower rank runs first. Within the <em>same</em> rank the order is undefined, so never rely on registration time or class names.</p>`
-  },
-  {
-    id:"plg-image-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-08",
-    q:"In an Update plugin you need the value a field held BEFORE the update, but that field isn't in the Target (the user didn't change it). What's the cleanest way to get it?",
-    options:[
-      "Call Retrieve on the record inside the plugin",
-      "Register a Pre-Image with that field and read it from PreEntityImages",
-      "Read it from the Target entity",
-      "Use context.SharedVariables"
-    ],
-    correct:1,
-    header:"Reading Old / Unchanged Values — Pre-Image",
-    solution:`
-<p>The <strong>Target</strong> on Update contains only the fields that changed. To read an old or unchanged value, register a <strong>Pre-Image</strong> listing those attributes and read <code>context.PreEntityImages</code>.</p>
-<p>A Retrieve works too, but it adds a server round-trip; an image rides along with the context for free.</p>`
-  },
-  {
-    id:"plg-image-002", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-08",
-    q:"Which statement about plugin images is correct?",
-    options:[
-      "Pre-Image is available on Create",
-      "Post-Image is available on Delete",
-      "Pre-Image isn't available on Create; Post-Image isn't available on Delete",
-      "Images are only available in asynchronous plugins"
-    ],
-    correct:2,
-    header:"Image Availability by Message",
-    solution:`
-<p>Images are snapshots of the record:</p>
-<ul>
-<li><strong>Pre-Image</strong> (before) — Update, Delete. Not Create (nothing exists yet).</li>
-<li><strong>Post-Image</strong> (after) — Create, Update. Not Delete (record is gone).</li>
-</ul>
-<p>Post-Images also require a Post-Operation stage.</p>`
-  },
-  {
-    id:"plg-loop-001", topic:"Plugins", type:"Scenario", difficulty:"Advanced", date:"2026-10-08",
-    q:"A Post-Operation plugin on Update of Account calls service.Update() on the same Account to set a field. Users report it sometimes errors out after running several times. What's happening, and how should it be done?",
-    options:null,
-    header:"Plugin Recursion / Infinite Loop & the Right Fix",
-    solution:`
-<p>The plugin updates the same record, which fires the Update plugin again, which updates again — <strong>recursion</strong>. The platform caps pipeline <strong>depth</strong> (default 8) and then throws to stop a runaway loop — that's the error users hit.</p>
-<h4>The right way</h4>
-<ul>
-<li><strong>Don't call Update to set a field on the same record.</strong> Set the value on the <strong>Target in a Pre-Operation</strong> step — it's saved with the original write, so there's no second update and no loop.</li>
-<li>Add <strong>filtering attributes</strong> so the step only fires on the fields you care about.</li>
-<li>As a guard, check <code>context.Depth &gt; 1</code> and exit — but that treats the symptom; prefer the Pre-Op approach.</li>
-</ul>
-<div class="callout key"><strong>Key:</strong> "Modify this record on save" = edit the Target in Pre-Op. "React to this record and touch others" = Post-Op.</div>`
-  },
-  {
-    id:"plg-filter-001", topic:"Plugins", type:"MCQ", difficulty:"Basic", date:"2026-10-08",
-    q:"You want an Update plugin to run only when the Status field changes, not on every update. What do you configure?",
-    options:[
-      "A Business Rule",
-      "Filtering attributes on the step, set to Status",
-      "A Pre-Image",
-      "A context.Depth check"
-    ],
-    correct:1,
-    header:"Filtering Attributes — Fire Only on Relevant Changes",
-    solution:`
-<p>Set <strong>filtering attributes</strong> on the step registration to the field(s) that should trigger it. The plugin then fires only when one of those changes — fewer executions, better performance, and it helps avoid recursion.</p>`
-  },
-  {
-    id:"plg-depth-001", topic:"Plugins", type:"MCQ", difficulty:"Basic", date:"2026-10-08",
-    q:"What does IPluginExecutionContext.Depth tell you?",
-    options:[
-      "How many fields changed on the record",
-      "How many times the pipeline has been re-entered — 1 on the first call, higher when triggered by another plugin",
-      "The number of registered plugin steps",
-      "The size of the Target entity"
-    ],
-    correct:1,
-    header:"IPluginExecutionContext.Depth",
-    solution:`
-<p><code>Depth</code> is how deep you are in the execution pipeline. It's <strong>1</strong> for the original user action and increments when a plugin's own operation triggers another plugin. Checking <code>Depth &gt; 1</code> is a common (if blunt) guard against recursion.</p>`
-  },
-  {
-    id:"plg-shared-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-08",
-    q:"You want a Pre-Operation plugin to pass a value to a Post-Operation plugin in the same transaction. What do you use?",
-    options:[
-      "A static class variable",
-      "context.SharedVariables",
-      "A Pre-Image",
-      "An environment variable"
-    ],
-    correct:1,
-    header:"Passing Data Across Stages — SharedVariables",
-    solution:`
-<p><code>context.SharedVariables</code> is a collection that flows through the execution pipeline, so a Pre-Op step can stash a value the Post-Op step later reads. For values set by a parent pipeline, read <code>context.ParentContext.SharedVariables</code>.</p>
-<div class="callout"><strong>Never</strong> use static or member variables for this — plugin instances are shared across threads (see the stateless question).</div>`
-  },
-  {
-    id:"plg-input-001", topic:"Plugins", type:"MCQ", difficulty:"Basic", date:"2026-10-08",
-    q:"In a Create plugin, where do you get the record being created?",
-    options:[
-      "context.PreEntityImages[\"Target\"]",
-      "context.InputParameters[\"Target\"], cast to Entity",
-      "context.OutputParameters[\"Target\"]",
-      "service.Retrieve, before it exists"
-    ],
-    correct:1,
-    header:"Getting the Target from InputParameters",
-    solution:`
-<p>The record is in <code>context.InputParameters["Target"]</code>. On Create/Update it's an <code>Entity</code>; on Delete it's an <code>EntityReference</code>. The new record's GUID comes back on Create via <code>context.OutputParameters["id"]</code> in Post-Op.</p>`
-  },
-  {
-    id:"plg-svc-001", topic:"Plugins", type:"MCQ", difficulty:"Advanced", date:"2026-10-08",
-    q:"Your plugin must update a record the current user has no privilege to edit. How do you run the service call so it succeeds?",
-    options:[
-      "Create the service with context.UserId",
-      "Create the service with null so it runs as the SYSTEM user",
-      "Catch the privilege error and retry",
-      "Register the plugin as asynchronous"
-    ],
-    correct:1,
-    header:"Running as SYSTEM vs Calling User",
-    solution:`
-<p><code>serviceFactory.CreateOrganizationService(null)</code> runs as the <strong>SYSTEM</strong> user and bypasses the caller's privileges. Passing <code>context.UserId</code> runs as the calling user and respects their security.</p>
-<div class="callout key"><strong>Use sparingly:</strong> SYSTEM context skips security checks — only when the operation legitimately must succeed regardless of the user's rights.</div>`
-  },
-  {
-    id:"plg-stateless-001", topic:"Plugins", type:"MCQ", difficulty:"Advanced", date:"2026-10-08",
-    q:"Why must you avoid storing request data in plugin class member / instance variables?",
-    options:[
-      "Member variables aren't supported in C#",
-      "The platform caches and reuses a single plugin instance across many requests and threads, so instance state leaks between executions",
-      "It makes the assembly too large",
-      "Member variables disable Pre-Images"
-    ],
-    correct:1,
-    header:"Plugins Must Be Stateless",
-    solution:`
-<p>The platform instantiates a plugin <strong>once</strong> and reuses that instance for many requests, across threads. Instance fields are therefore shared and not thread-safe — per-request data stored there can bleed into other executions. Keep all request state in <strong>local variables</strong> inside <code>Execute</code>.</p>`
-  },
-  {
-    id:"plg-config-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-08",
-    q:"A plugin step needs an API key for an external call. Where should the key go?",
-    options:[
-      "Hard-coded in the plugin assembly",
-      "The Unsecure configuration string",
-      "The Secure configuration string",
-      "context.SharedVariables"
-    ],
-    correct:2,
-    header:"Secrets Go in Secure Configuration",
-    solution:`
-<p>A step has two config strings. <strong>Unsecure</strong> is readable by anyone and travels with the solution. <strong>Secure</strong> is encrypted, access-restricted, and not exported by default — that's where secrets like API keys belong. (Environment variables are the more modern alternative.)</p>`
-  },
-  {
-    id:"plg-sandbox-001", topic:"Plugins", type:"MCQ", difficulty:"Intermediate", date:"2026-10-08",
-    q:"Which is a real restriction of a sandbox (isolation mode) plugin — the only mode allowed online?",
-    options:[
-      "It can't read the Target entity",
-      "No file system or registry access, and outbound network limited to standard web ports",
-      "It can't be synchronous",
-      "It can't use Pre-Images"
-    ],
-    correct:1,
-    header:"Sandbox Isolation Limits",
-    solution:`
-<p>Sandboxed plugins run with restricted trust: <strong>no file system, no registry, no inter-process calls</strong>, and outbound network is limited to standard web ports (443/80) over HTTP/S. Dataverse online requires sandbox isolation; full-trust is an on-prem-only option.</p>`
-  }
-];
-
-const NOTES = [
-  {
-    id:"n-txn", title:"Transactions & Rollback", topic:"Foundations",
-    body:`
-<p>A <strong>transaction</strong> is a group of operations that must all succeed or all fail together — no half-done state.</p>
-<div class="callout"><strong>ATM analogy:</strong> deduct ₹1000, then dispense ₹1000. If the dispense fails, the deduction is rolled back — your balance is restored as if nothing happened.</div>
-<p>When you save a record, Dataverse wraps it in a transaction. If a <strong>synchronous</strong> plugin throws, the whole save rolls back and the record is never created — that's why sync plugins can "block" a save.</p>
-<h4>Which stages sit inside the transaction</h4>
-<table>
-<tr><th>Stage</th><th>In transaction?</th><th>Meaning</th></tr>
-<tr><td>Pre-Validation</td><td>No (outside)</td><td>Before the transaction starts — cheapest place to reject bad input.</td></tr>
-<tr><td>Pre-Operation</td><td>Yes</td><td>Inside txn, before the DB write.</td></tr>
-<tr><td>Main Operation</td><td>Yes</td><td>The platform's actual write.</td></tr>
-<tr><td>Post-Operation</td><td>Yes</td><td>Inside txn, after the write, before commit.</td></tr>
-</table>`
-  },
-  {
-    id:"n-race", title:"Parallelism & Race Conditions", topic:"Foundations",
-    body:`
-<p><strong>Parallel</strong> = multiple things happening at once, independently. If four users create Accounts simultaneously, the Create plugin runs four times in parallel — each unaware of the others.</p>
-<p>A <strong>race condition</strong> is when two parallel operations act on the same starting data before either finishes, producing a wrong result.</p>
-<div class="callout"><strong>Last-seat analogy:</strong> two people book the last movie seat at the same instant. Both see "available", both click book, the seat sells twice.</div>
-<pre><code>T1  A: read MAX -> 1002
-T2  B: read MAX -> 1002
-T3  A: write 1003
-T4  B: write 1003   // duplicate</code></pre>
-<h4>Fixes</h4>
-<ul>
-<li>Native <strong>Autonumber</strong> column (platform guarantees uniqueness)</li>
-<li>Counter row + <code>RowVersion</code> optimistic concurrency + retry</li>
-<li>Unique <strong>Alternate Key</strong> as a DB-level safety net</li>
-</ul>`
-  },
-  {
-    id:"n-syncasync", title:"Sync vs Async Plugins", topic:"Plugins",
-    body:`
-<h4>Synchronous</h4>
-<p>Runs immediately as part of the user's save. The user <strong>waits</strong>; runs inside the transaction (Pre/Post-Op); if it throws, the save rolls back.</p>
-<p>Use for: validating/blocking a save, editing the same record before save (Pre-Op), fast logic that must be guaranteed with the save.</p>
-<h4>Asynchronous</h4>
-<p>Runs later in a background queue, in its <strong>own</strong> transaction, after the main one committed. The user <strong>doesn't wait</strong>; if it throws, only the background job fails.</p>
-<p>Use for: external/3rd-party calls, heavy processing, anything that needn't block the save.</p>
-<table>
-<tr><th>Aspect</th><th>Sync</th><th>Async</th></tr>
-<tr><td>User waits?</td><td>Yes</td><td>No</td></tr>
-<tr><td>Transaction</td><td>Shares user's txn</td><td>Own txn, after commit</td></tr>
-<tr><td>Can block/cancel save?</td><td>Yes (throw)</td><td>No (already saved)</td></tr>
-<tr><td>Failure impact</td><td>Rolls back the save</td><td>Only the job fails</td></tr>
-<tr><td>Good for</td><td>Validation, same-record edits</td><td>External calls, heavy work</td></tr>
-</table>
-<div class="callout key"><strong>Key:</strong> "In transaction" ≠ "runs one at a time." Transaction scope controls rollback, not concurrency. Both modes run in parallel.</div>`
-  },
-  {
-    id:"n-sysjob", title:"System Jobs / AsyncOperation", topic:"Plugins",
-    body:`
-<p>A <strong>System Job</strong> is Dataverse's record of a background task. <code>AsyncOperation</code> is the underlying table — same thing, two names. It's the platform's central queue for all deferred work.</p>
-<h4>What creates one</h4>
-<ul>
-<li>Async plugins</li>
-<li>Dataverse-triggered Power Automate flows</li>
-<li>Classic background workflows</li>
-<li>Bulk operations (bulk delete/import)</li>
-<li>System maintenance (reindexing, cleanup)</li>
-</ul>
-<h4>Key columns</h4>
-<table>
-<tr><th>Column</th><th>Meaning</th></tr>
-<tr><td>StatusCode</td><td>Waiting / In Progress / Succeeded / Failed / Canceled</td></tr>
-<tr><td>Regarding</td><td>Which record it ran for</td></tr>
-<tr><td>Message</td><td>Error + stack trace if failed</td></tr>
-<tr><td>RetryCount</td><td>How many times it's been attempted</td></tr>
-<tr><td>PostponeUntil</td><td>When a deferred retry will run</td></tr>
-</table>
-<p>Find them in the Power Platform Admin Center → Environment → <strong>System Jobs</strong>, or query the <code>asyncoperation</code> entity. Succeeded jobs are auto-cleaned; failed jobs are retained for investigation.</p>`
-  },
-  {
-    id:"n-retry", title:"Async Retry & Idempotency", topic:"Plugins",
-    body:`
-<p>Dataverse's async retry is platform-controlled and not fully configurable. It distinguishes two failure types:</p>
-<table>
-<tr><th>Type</th><th>Example</th><th>Retried?</th></tr>
-<tr><td>Transient</td><td>SQL timeout, deadlock, throttling, server busy</td><td>Yes, auto, with backoff</td></tr>
-<tr><td>Non-transient</td><td>NullReference, bad data, business throw, auth rejected</td><td>No — stays Failed</td></tr>
-</table>
-<p>Retries use an increasing <strong>backoff</strong>, increment <code>RetryCount</code>, and stop after a platform limit.</p>
-<div class="callout key"><strong>The gotcha:</strong> a retry re-runs the operation from the start. If it had external side-effects, you can get duplicates.</div>
-<h4>Idempotency</h4>
-<p>Design every async op with external side-effects so running it twice equals running it once:</p>
-<ul>
-<li>Check-before-create</li>
-<li>Unique key / idempotency token the external system dedupes on</li>
-<li>Progress flags on the record so a retry resumes rather than repeats</li>
-</ul>
-<p>For permanently-failed jobs you've since fixed: Resume the System Job manually, or re-queue via a scheduled flow.</p>`
-  },
-  {
-    id:"n-images", title:"Plugin Images (Pre / Post)", topic:"Plugins",
-    body:`
-<p>An <strong>image</strong> is a snapshot of the record attached to the execution context, so you can read field values without an extra Retrieve.</p>
-<table>
-<tr><th>Image</th><th>Snapshot</th><th>Available on</th></tr>
-<tr><td>Pre-Image</td><td>Before the operation</td><td>Update, Delete</td></tr>
-<tr><td>Post-Image</td><td>After the operation</td><td>Create, Update</td></tr>
-</table>
-<p>Register images on the step and list only the attributes you need. Read them via <code>context.PreEntityImages["name"]</code> / <code>context.PostEntityImages["name"]</code>.</p>
-<div class="callout key"><strong>Why they matter:</strong> on Update the <strong>Target</strong> holds only the fields that changed. To see an old value or an unchanged field, use a Pre-Image — it's cheaper than a Retrieve round-trip.</div>`
-  },
-  {
-    id:"n-order-loop", title:"Execution Order, Depth & Recursion", topic:"Plugins",
-    body:`
-<h4>Execution order (rank)</h4>
-<p>Steps on the same message + stage run in ascending <strong>Execution Order</strong>. Lower rank first; within the same rank, order is undefined. If one step depends on another's output, set the ranks explicitly — don't rely on registration time.</p>
-<h4>Depth</h4>
-<p><code>context.Depth</code> = how deep in the pipeline you are. <strong>1</strong> for the original action, higher when one plugin's operation triggers another.</p>
-<h4>Recursion / infinite loops</h4>
-<p>A plugin that updates the record it fires on re-triggers itself. The platform caps depth (default 8) and throws to break the loop.</p>
-<ul>
-<li><strong>Best:</strong> to change the same record, edit the <strong>Target in Pre-Operation</strong> — no second update, no loop.</li>
-<li>Use <strong>filtering attributes</strong> so the step only fires on relevant field changes.</li>
-<li><code>Depth &gt; 1</code> guard as a last resort — it treats the symptom.</li>
-</ul>`
-  },
-  {
-    id:"n-context", title:"Plugin Context Essentials", topic:"Plugins",
-    body:`
-<h4>Getting the data</h4>
-<ul>
-<li><code>context.InputParameters["Target"]</code> — the record being operated on. Entity on Create/Update, EntityReference on Delete.</li>
-<li><code>context.OutputParameters["id"]</code> — the new GUID on Create (Post-Op).</li>
-<li><code>context.SharedVariables</code> — pass values between steps in the pipeline (Pre-Op → Post-Op); <code>ParentContext.SharedVariables</code> for a parent pipeline's values.</li>
-</ul>
-<h4>The service</h4>
-<ul>
-<li><code>CreateOrganizationService(context.UserId)</code> — runs as the calling user, respects their privileges.</li>
-<li><code>CreateOrganizationService(null)</code> — runs as SYSTEM, bypasses security. Use sparingly.</li>
-<li><code>UserId</code> vs <code>InitiatingUserId</code> — who the plugin runs as vs who actually triggered it.</li>
-</ul>
-<h4>Config & hosting</h4>
-<ul>
-<li>Secrets (API keys) → <strong>Secure</strong> configuration, not Unsecure. Environment variables are the modern alternative.</li>
-<li><strong>Stateless only:</strong> the plugin instance is cached and reused across threads — keep request state in locals, never in fields.</li>
-<li><strong>Sandbox isolation</strong> (required online): no file system/registry, outbound only on 443/80.</li>
-</ul>`
-  }
-];
-
-/* ============================================================
-   STATE + STORAGE
-   ============================================================ */
-const SKEY="d365prep:v1";
-let store={progress:{},theme:null};
-try{const raw=localStorage.getItem(SKEY);if(raw)store=Object.assign(store,JSON.parse(raw));}catch(e){}
-function save(){try{localStorage.setItem(SKEY,JSON.stringify(store));}catch(e){}}
-function prog(id){return store.progress[id]||(store.progress[id]={answered:false,correct:null,picked:null,bookmarked:false});}
-
-const filters={topic:"All",status:"All",search:""};
-let currentId=QUESTIONS[0].id;
-
-const $=s=>document.querySelector(s);
-const el=(t,c)=>{const n=document.createElement(t);if(c)n.className=c;return n;};
-
-/* ============================================================
-   THEME
-   ============================================================ */
-const sun=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>`;
-const moon=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5Z"/></svg>`;
-function sysDark(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;}
-function effDark(){return store.theme?store.theme==="dark":sysDark();}
-function applyTheme(){
-  if(store.theme)document.documentElement.setAttribute("data-theme",store.theme);
-  else document.documentElement.removeAttribute("data-theme");
-  $("#themeBtn").innerHTML=effDark()?sun:moon;
-}
-$("#themeBtn").addEventListener("click",()=>{store.theme=effDark()?"light":"dark";save();applyTheme();});
+/* ---------- theme ---------- */
+const sun='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>';
+const moon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.5A8.5 8.5 0 1 1 11.5 3a6.5 6.5 0 0 0 9.5 9.5Z"/></svg>';
+let theme=null;
+try{theme=localStorage.getItem('layering:theme');}catch(e){}
+function sysDark(){return matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches;}
+function effDark(){return theme?theme==='dark':sysDark();}
+function applyTheme(){theme?document.documentElement.setAttribute('data-theme',theme):document.documentElement.removeAttribute('data-theme');document.getElementById('themeBtn').innerHTML=effDark()?sun:moon;}
+document.getElementById('themeBtn').onclick=()=>{theme=effDark()?'light':'dark';try{localStorage.setItem('layering:theme',theme);}catch(e){}applyTheme();};
 applyTheme();
 
-/* ============================================================
-   RENDER — practice list + panel
-   ============================================================ */
-function filtered(){
-  return QUESTIONS.filter(q=>{
-    if(filters.topic!=="All"&&q.topic!==filters.topic)return false;
-    const p=prog(q.id);
-    if(filters.status==="Unanswered"&&p.answered)return false;
-    if(filters.status==="Incorrect"&&p.correct!==false)return false;
-    if(filters.status==="Bookmarked"&&!p.bookmarked)return false;
-    if(filters.status==="New"&&q.date!==BANK_DATE)return false;
-    if(filters.search){
-      const s=filters.search.toLowerCase();
-      if(!(q.q.toLowerCase().includes(s)||q.topic.toLowerCase().includes(s)||q.header.toLowerCase().includes(s)))return false;
+/* ---------- data ---------- */
+const PROPS=[
+  {key:'displayName',label:'Display Name'},
+  {key:'maxValue',label:'Max Value'},
+  {key:'required',label:'Required Level'},
+  {key:'visible',label:'Visible on Form'}
+];
+// bottom -> top
+const LAYERS=[
+  {id:'system',name:'Base Platform',hue:'system',type:'managed',pfx:null,
+   sets:{displayName:'Credit Limit',maxValue:'1,000,000',required:'Optional',visible:'Yes'}},
+  {id:'sales',name:'Dynamics 365 Sales',hue:'sales',type:'managed',pfx:null,
+   sets:{required:'Business Recommended'}},
+  {id:'prexa',name:'PREXA365',hue:'prexa',type:'managed',pfx:'avpx_',
+   sets:{maxValue:'500,000'}},
+  {id:'client',name:'Client Customizations',hue:'client',type:'managed',pfx:'av_',
+   sets:{displayName:'Approved Credit Limit',visible:'No'}},
+  {id:'active',name:'Unmanaged (Active)',hue:'active',type:'unmanaged',pfx:null,
+   sets:{displayName:'Credit Limit (hotfix)',required:'Business Required'}}
+];
+const enabled={}; LAYERS.forEach(l=>enabled[l.id]=true);
+let selProp='required';
+const ordered=LAYERS.slice().reverse(); // top -> bottom
+
+/* ---------- resolve ---------- */
+function resolve(key){
+  for(const l of ordered){
+    if(enabled[l.id] && l.sets[key]!==undefined) return {value:l.sets[key],layer:l};
+  }
+  return {value:'—',layer:null};
+}
+
+/* ---------- render stack ---------- */
+const stackEl=document.getElementById('stack');
+function eye(open){return open
+  ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>'
+  : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-3.2 4M6.6 6.6A15.6 15.6 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 3.6-.7"/></svg>';}
+
+function renderStack(){
+  stackEl.innerHTML='';
+  const res=resolve(selProp);
+  const winnerId=res.layer?res.layer.id:null;
+  // index of winner in ordered (top->bottom)
+  const winIdx=ordered.findIndex(l=>l.id===winnerId);
+
+  LAYERS.forEach((l)=>{            // DOM bottom->top (column-reverse flips visually)
+    const topIdx=ordered.findIndex(o=>o.id===l.id); // 0 = topmost
+    const div=document.createElement('div');
+    div.className='layer'+(enabled[l.id]?'':' off');
+    div.style.setProperty('--lc',`var(--L-${l.hue})`);
+    div.style.setProperty('--lc-s',`var(--L-${l.hue}-s)`);
+
+    // scan classes relative to winner
+    if(winIdx>=0){
+      if(topIdx<winIdx && enabled[l.id] && l.sets[selProp]===undefined) div.classList.add('pass');
+      else if(topIdx===winIdx) div.classList.add('hit');
+      else if(topIdx>winIdx) div.classList.add('below');
     }
-    return true;
+    div.querySelectorAll('.rail'); // noop
+    div.style.transitionDelay=(Math.min(topIdx,winIdx<0?topIdx:winIdx)*70)+'ms';
+
+    const pfxBadge=l.pfx?`<span class="badge pfx">${l.pfx}</span>`:'';
+    const typeBadge=`<span class="badge ${l.type}">${l.type}</span>`;
+    const pills=Object.keys(l.sets).map(k=>{
+      const p=PROPS.find(x=>x.key===k);
+      const isSel=k===selProp;
+      const isWin=isSel && l.id===winnerId;
+      const overridden=isSel && !isWin && enabled[l.id];
+      let cls='pill';
+      if(isWin)cls+=' win';
+      else if(overridden && topIdx<winIdx===false)cls+=''; // handled below
+      if(isSel && !isWin && topIdx>winIdx) cls+=' overridden';
+      return `<span class="${cls}"><span class="k">${p.label}:</span> ${l.sets[k]}</span>`;
+    }).join('');
+
+    div.innerHTML=`
+      <div class="rail"></div>
+      <button class="eye" aria-label="toggle layer">${eye(enabled[l.id])}</button>
+      <div class="body">
+        <div class="nm"><span class="name">${l.name}</span>${pfxBadge}${typeBadge}<span class="hitflag">● LIVE</span></div>
+        <div class="sets">${pills||'<span class="pill" style="opacity:.5">transparent — sets nothing here</span>'}</div>
+      </div>`;
+    div.querySelector('.eye').onclick=()=>{enabled[l.id]=!enabled[l.id];render();};
+    stackEl.appendChild(div);
   });
 }
 
-function topicCounts(){
-  const m={};QUESTIONS.forEach(q=>m[q.topic]=(m[q.topic]||0)+1);return m;
-}
+/* ---------- render resolved ---------- */
+const runtimeEl=document.getElementById('runtime');
+const propselEl=document.getElementById('propsel');
+const narrEl=document.getElementById('narr');
 
-function renderTopicChips(){
-  const host=$("#topicChips");host.innerHTML="";
-  const counts=topicCounts();
-  const topics=["All",...Object.keys(counts)];
-  topics.forEach(t=>{
-    const c=el("button","chip");
-    c.setAttribute("aria-pressed",filters.topic===t);
-    c.innerHTML=t+`<span class="c">${t==="All"?QUESTIONS.length:counts[t]}</span>`;
-    c.onclick=()=>{filters.topic=t;renderAll();};
-    host.appendChild(c);
+function renderPropSel(){
+  propselEl.innerHTML='';
+  PROPS.forEach(p=>{
+    const b=document.createElement('button');
+    b.className='ps';b.textContent=p.label;b.setAttribute('aria-pressed',p.key===selProp);
+    b.onclick=()=>{selProp=p.key;render();};
+    propselEl.appendChild(b);
   });
 }
-function renderStatusChips(){
-  const host=$("#statusChips");host.innerHTML="";
-  const defs=[["All"],["New"],["Unanswered"],["Incorrect"],["Bookmarked"]];
-  defs.forEach(([t])=>{
-    const c=el("button","chip");
-    c.setAttribute("aria-pressed",filters.status===t);
-    c.textContent=t;
-    c.onclick=()=>{filters.status=t;renderAll();};
-    host.appendChild(c);
+function renderRuntime(){
+  runtimeEl.innerHTML='';
+  PROPS.forEach(p=>{
+    const r=resolve(p.key);
+    const row=document.createElement('button');
+    row.className='rrow'+(p.key===selProp?' active':'');
+    if(p.key==='visible' && r.value==='No') row.classList.add('hidden-val');
+    const srcHue=r.layer?`var(--L-${r.layer.hue})`:'var(--faint)';
+    const srcS=r.layer?`var(--L-${r.layer.hue}-s)`:'var(--surface-2)';
+    row.style.setProperty('--lc',srcHue);row.style.setProperty('--lc-s',srcS);
+    row.innerHTML=`<span class="rk">${p.label}</span><span class="rv">${r.value}</span>
+      <span class="src">${r.layer?r.layer.name:'none'}</span>`;
+    row.onclick=()=>{selProp=p.key;render();};
+    runtimeEl.appendChild(row);
   });
 }
-
-function bkIcon(on){
-  return `<svg viewBox="0 0 24 24" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="2"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg>`;
+function renderNarr(){
+  const p=PROPS.find(x=>x.key===selProp);
+  const r=resolve(selProp);
+  if(!r.layer){narrEl.innerHTML=`<b>${p.label}</b> is defined by no enabled layer — it would fall back to platform defaults.`;return;}
+  // find lower layers (below winner) that also set it -> overridden
+  const winIdx=ordered.findIndex(l=>l.id===r.layer.id);
+  const losers=ordered.slice(winIdx+1).filter(l=>l.sets[selProp]!==undefined).map(l=>`${l.name} (${l.sets[selProp]})`);
+  // disabled higher layers that would've set it
+  const skipped=ordered.slice(0,winIdx).filter(l=>!enabled[l.id] && l.sets[selProp]!==undefined).map(l=>l.name);
+  let s=`<b>${p.label} = ${r.value}</b> — set by the <b>${r.layer.name}</b> layer.`;
+  if(losers.length) s+=` It overrides ${losers.join(', ')} beneath it.`;
+  else s+=` No lower layer touches this property.`;
+  if(skipped.length) s+=` (${skipped.join(', ')} would have won, but ${skipped.length>1?'they are':'it is'} switched off.)`;
+  narrEl.innerHTML=s;
 }
 
-function renderList(){
-  const list=filtered();
-  const scroll=$("#qlistScroll");scroll.innerHTML="";
-  $("#qlistCount").textContent=list.length+" shown";
-  if(!list.length){
-    const e=el("div");e.style.padding="24px 14px";e.style.color="var(--faint)";e.style.fontSize="13px";
-    e.textContent="No questions match these filters.";scroll.appendChild(e);return;
-  }
-  list.forEach(q=>{
-    const p=prog(q.id);
-    const row=el("button","qrow");
-    row.setAttribute("aria-current",q.id===currentId);
-    const dotCls=p.answered?(p.correct?"dot ok":"dot bad"):"dot";
-    row.innerHTML=`
-      <span class="${dotCls}"></span>
-      <span class="qr-body">
-        <span class="qr-title">${q.q}</span>
-        <span class="qr-meta"><span class="tp">${q.topic} · ${q.difficulty}</span></span>
-      </span>`;
-    const bk=el("button","bk"+(p.bookmarked?" on":""));
-    bk.innerHTML=bkIcon(p.bookmarked);bk.title="Bookmark";
-    bk.onclick=(ev)=>{ev.stopPropagation();p.bookmarked=!p.bookmarked;save();renderAll();};
-    row.appendChild(bk);
-    row.onclick=()=>{currentId=q.id;closeList();renderAll();window.scrollTo({top:0,behavior:"smooth"});};
-    scroll.appendChild(row);
-  });
-}
-
-function renderPanel(){
-  const host=$("#panelHost");host.innerHTML="";
-  const list=filtered();
-  if(!list.includes(QUESTIONS.find(q=>q.id===currentId))){
-    if(list.length)currentId=list[0].id;
-  }
-  const q=QUESTIONS.find(x=>x.id===currentId);
-  if(!q){
-    const e=el("div","empty");
-    e.innerHTML=`<div class="big">Nothing to practice here</div><div>Clear a filter to see questions again.</div>`;
-    host.appendChild(e);return;
-  }
-  const p=prog(q.id);
-  const idx=list.indexOf(q);
-  const panel=el("div","panel");
-
-  const dcl=q.difficulty.toLowerCase();
-  const isNew=q.date===BANK_DATE;
-  panel.innerHTML=`
-    <div class="p-head">
-      <span class="badge topic">${q.topic}</span>
-      <span class="badge type">${q.type}</span>
-      <span class="badge ${dcl}">${q.difficulty}</span>
-      ${isNew?'<span class="badge new">New</span>':''}
-      <span class="sp"></span>
-      <span class="p-num">${idx+1} / ${list.length}</span>
-    </div>
-    <div class="q-text">${q.q}</div>`;
-
-  // OPTIONS or scenario reveal
-  if(q.options){
-    const opts=el("div","options");
-    q.options.forEach((text,i)=>{
-      const o=el("button","opt");
-      const key=String.fromCharCode(65+i);
-      o.innerHTML=`<span class="key">${key}</span><span class="ot">${text}</span><span class="res"></span>`;
-      if(p.answered){
-        o.disabled=true;
-        if(i===q.correct)o.classList.add("correct");
-        if(i===p.picked&&!p.correct)o.classList.add("wrong");
-        if(i===q.correct)o.querySelector(".res").innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>`;
-        else if(i===p.picked)o.querySelector(".res").innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="var(--bad)" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>`;
-      }else{
-        if(i===p.picked)o.classList.add("sel");
-        o.onclick=()=>{p.picked=i;save();renderPanel();};
-      }
-      opts.appendChild(o);
-    });
-    panel.appendChild(opts);
-  }
-
-  // feedback
-  const fb=el("div","feedback");
-  if(p.answered&&q.options){
-    fb.classList.add("show",p.correct?"ok":"bad");
-    fb.innerHTML=p.correct
-      ?`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg> Correct.`
-      :`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg> Not quite — review the solution below.`;
-  }
-  panel.appendChild(fb);
-
-  // actions
-  const act=el("div","p-actions");
-  if(q.options){
-    const submit=el("button","btn");
-    submit.textContent=p.answered?"Answered":"Check answer";
-    submit.disabled=p.answered||p.picked==null;
-    submit.onclick=()=>{p.answered=true;p.correct=(p.picked===q.correct);save();renderAll();};
-    act.appendChild(submit);
-    if(p.answered){
-      const retry=el("button","btn sec");retry.textContent="Try again";
-      retry.onclick=()=>{p.answered=false;p.correct=null;p.picked=null;save();renderAll();};
-      act.appendChild(retry);
-    }
-  }else{
-    const reveal=el("button","btn");
-    reveal.textContent=p.answered?"Solution shown":"Reveal solution";
-    reveal.disabled=p.answered;
-    reveal.onclick=()=>{p.answered=true;p.correct=true;save();renderAll();};
-    act.appendChild(reveal);
-    if(p.answered){
-      const hide=el("button","btn sec");hide.textContent="Hide";
-      hide.onclick=()=>{p.answered=false;p.correct=null;save();renderAll();};
-      act.appendChild(hide);
-    }
-  }
-  const nav=el("div","nav-mini");
-  const prev=el("button");prev.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>`;
-  prev.disabled=idx<=0;prev.title="Previous";
-  prev.onclick=()=>{currentId=list[idx-1].id;renderAll();window.scrollTo({top:0,behavior:"smooth"});};
-  const next=el("button");next.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>`;
-  next.disabled=idx>=list.length-1;next.title="Next";
-  next.onclick=()=>{currentId=list[idx+1].id;renderAll();window.scrollTo({top:0,behavior:"smooth"});};
-  nav.appendChild(prev);nav.appendChild(next);
-  act.appendChild(nav);
-  panel.appendChild(act);
-
-  // solution
-  const sol=el("div","solution"+(p.answered?" show":""));
-  sol.innerHTML=`
-    <div class="sol-head">
-      <span class="tag">NOTION</span>
-      <span class="h">${q.header}</span>
-      <button class="copy-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button>
-    </div>
-    <div class="sol-body"><div class="prose">${q.solution}</div></div>`;
-  sol.querySelector(".copy-btn").onclick=()=>copyNote(q);
-  panel.appendChild(sol);
-
-  host.appendChild(panel);
-}
-
-/* markdown-ish plain text for copy (Notion-friendly) */
-function copyNote(q){
-  const tmp=el("div");tmp.innerHTML=q.solution;
-  let out=`## ${q.header}\n\n`;
-  out+=htmlToText(tmp).trim()+"\n";
-  navigator.clipboard?.writeText(out).then(()=>toast("Copied — paste into Notion")).catch(()=>toast("Copy failed"));
-}
-function htmlToText(node){
-  let s="";
-  node.childNodes.forEach(n=>{
-    if(n.nodeType===3){s+=n.textContent;return;}
-    const tag=n.tagName?.toLowerCase();
-    if(tag==="li")s+="\n- "+htmlToText(n).trim();
-    else if(tag==="h4")s+="\n\n### "+htmlToText(n).trim()+"\n";
-    else if(tag==="p")s+="\n"+htmlToText(n).trim()+"\n";
-    else if(tag==="pre")s+="\n```\n"+n.textContent.trim()+"\n```\n";
-    else if(tag==="ul")s+=htmlToText(n)+"\n";
-    else if(tag==="table")s+="\n"+tableToText(n)+"\n";
-    else if(tag==="div"&&n.className.includes("callout"))s+="\n> "+htmlToText(n).trim()+"\n";
-    else s+=htmlToText(n);
-  });
-  return s;
-}
-function tableToText(t){
-  const rows=[...t.querySelectorAll("tr")];
-  return rows.map(r=>[...r.children].map(c=>c.textContent.trim()).join(" | ")).join("\n");
-}
-
-/* ============================================================
-   MASTERY + counts
-   ============================================================ */
-function renderMastery(){
-  const total=QUESTIONS.length;
-  let correct=0;QUESTIONS.forEach(q=>{if(prog(q.id).correct===true)correct++;});
-  const pct=total?Math.round(correct/total*100):0;
-  $("#masteryNum").textContent=pct+"%";
-  const circ=2*Math.PI*16;
-  $("#ringBar").setAttribute("stroke-dasharray",circ.toFixed(1));
-  $("#ringBar").setAttribute("stroke-dashoffset",(circ*(1-pct/100)).toFixed(1));
-  $("#practiceCount").textContent=total;
-  $("#notesCount").textContent=NOTES.length;
-  $("#brandSub").textContent="Updated "+fmtDate(BANK_DATE)+" · "+total+" questions";
-}
-function fmtDate(iso){
-  const d=new Date(iso+"T00:00:00");
-  return d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
-}
-
-/* ============================================================
-   NOTES
-   ============================================================ */
-function renderNotes(){
-  const host=$("#notesHost");host.innerHTML="";
-  NOTES.forEach((n,i)=>{
-    const d=el("details","note");d.id="note-"+n.id;
-    d.innerHTML=`
-      <summary class="note-head" style="list-style:none">
-        <span class="note-ix">${String(i+1).padStart(2,"0")}</span>
-        <span class="nt">${n.title}</span>
-        <span class="tp">${n.topic}</span>
-        <span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
-      </summary>
-      <div class="note-body"><div class="prose">${n.body}</div></div>`;
-    host.appendChild(d);
-  });
-}
-
-/* ============================================================
-   TABS + list drawer + reset + toast
-   ============================================================ */
-function showTab(which){
-  const prac=which==="practice";
-  $("#tabPractice").setAttribute("aria-selected",prac);
-  $("#tabNotes").setAttribute("aria-selected",!prac);
-  $("#viewPractice").classList.toggle("hidden",!prac);
-  $("#viewNotes").classList.toggle("hidden",prac);
-}
-$("#tabPractice").onclick=()=>showTab("practice");
-$("#tabNotes").onclick=()=>showTab("notes");
-
-function openList(){$("#qlist").classList.add("open");}
-function closeList(){$("#qlist").classList.remove("open");}
-$("#listToggle").onclick=openList;
-$("#qlistClose").onclick=closeList;
-
-$("#searchInput").addEventListener("input",e=>{filters.search=e.target.value;renderList();renderPanel();});
-
-$("#resetBtn").onclick=()=>{
-  if(confirm("Clear all saved progress on this device? Your answers, scores and bookmarks will be reset."))
-  {store.progress={};save();renderAll();toast("Progress cleared");}
-};
-
-let toastT;
-function toast(msg){
-  const t=$("#toast");t.textContent=msg;t.classList.add("show");
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("show"),1900);
-}
-
-/* keyboard: arrows to navigate, 1-4 to pick */
-document.addEventListener("keydown",e=>{
-  if($("#viewPractice").classList.contains("hidden"))return;
-  if(/input|textarea/i.test(document.activeElement.tagName))return;
-  const list=filtered();const q=QUESTIONS.find(x=>x.id===currentId);if(!q)return;
-  const idx=list.indexOf(q);
-  if(e.key==="ArrowRight"&&idx<list.length-1){currentId=list[idx+1].id;renderAll();}
-  else if(e.key==="ArrowLeft"&&idx>0){currentId=list[idx-1].id;renderAll();}
-  else if(q.options&&!prog(q.id).answered&&/^[1-4]$/.test(e.key)){
-    const i=+e.key-1;if(i<q.options.length){prog(q.id).picked=i;save();renderPanel();}
-  }
+/* ---------- scenarios ---------- */
+const SCN=[
+  {id:'hotfix',label:'Managed update won\'t show',sub:'active hotfix hides your fix',
+   state:{system:1,sales:1,prexa:1,client:1,active:1},prop:'displayName',
+   note:`The Client layer ships <b>Display Name = "Approved Credit Limit"</b>, but an <b>Unmanaged (Active)</b> hotfix sits on top with <b>"Credit Limit (hotfix)"</b>. The active layer wins, so your managed name never shows. <b>Fix:</b> Remove Active Customization — turn off the Active layer and watch it surface.`},
+  {id:'removeactive',label:'After "Remove Active Customization"',sub:'active layer lifted off',
+   state:{system:1,sales:1,prexa:1,client:1,active:0},prop:'displayName',
+   note:`With the Active layer gone, Display Name falls to the next layer that defines it — <b>Client Customizations → "Approved Credit Limit"</b>. This is exactly what removing an active customization does in production.`},
+  {id:'uninstall',label:'Uninstall the PREXA365 solution',sub:'managed layer removed cleanly',
+   state:{system:1,sales:1,prexa:0,client:1,active:1},prop:'maxValue',
+   note:`PREXA365 set <b>Max Value = 500,000</b>. Remove that managed layer and the value reverts to the <b>Base Platform's 1,000,000</b> — automatically. Managed layers are reversible; this is why they're safe to upgrade.`},
+  {id:'hidden',label:'Why is this field hidden?',sub:'a managed layer set Visible = No',
+   state:{system:1,sales:1,prexa:1,client:1,active:1},prop:'visible',
+   note:`The base platform says <b>Visible = Yes</b>, yet the field is hidden. Trace it: the <b>Client Customizations</b> layer set <b>Visible = No</b>, and nothing above re-sets it — so it wins. The answer is always "read the layers," not "it's a bug."`}
+];
+const scnRow=document.getElementById('scnRow');
+const scnNote=document.getElementById('scnNote');
+SCN.forEach(s=>{
+  const b=document.createElement('button');b.className='scn';
+  b.innerHTML=`${s.label}<small>${s.sub}</small>`;
+  b.onclick=()=>{
+    LAYERS.forEach(l=>enabled[l.id]=!!s.state[l.id]);
+    selProp=s.prop;
+    scnNote.className='scn-note show';
+    scnNote.innerHTML=`<span class="tag">SCENARIO</span>${s.note}`;
+    render();
+    document.querySelector('.stage').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  scnRow.appendChild(b);
 });
+const reset=document.createElement('button');reset.className='scn reset';
+reset.innerHTML='↺ Reset<small>all layers on</small>';
+reset.onclick=()=>{LAYERS.forEach(l=>enabled[l.id]=true);scnNote.className='scn-note';render();};
+scnRow.appendChild(reset);
 
-/* ============================================================
-   BOOT
-   ============================================================ */
-function renderAll(){renderTopicChips();renderStatusChips();renderList();renderPanel();renderMastery();}
-renderNotes();
-renderAll();
+/* ---------- boot ---------- */
+function render(){renderStack();renderPropSel();renderRuntime();renderNarr();}
+render();
 </script>
 </body>
 </html>
