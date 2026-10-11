@@ -1035,6 +1035,85 @@ parent.Columns = new ColumnSet("name");   // parent name, same query</code></pre
 <tr><td>Analytics copy (Synapse/Fabric)</td><td>Azure Data Lake</td></tr>
 </table>
 <p>Online, you never touch base SQL directly — the only door is the read-only <strong>TDS endpoint</strong>. Every read/write crosses the pipeline → security filter → SQL translation, so <strong>round-trips dominate cost</strong>.</p>`
+  },
+
+  {
+    id:"val-order-001", topic:"Validation & Scope", type:"Scenario", difficulty:"Advanced", date:"2026-10-11",
+    q:"A validation on one field is implemented in all four: Business Rule, JavaScript, a real-time process/workflow, and a plugin. What's the execution order (first → last), and which one actually wins as enforcement?",
+    options:null,
+    header:"Validation Precedence Across BR / JS / Process / Plugin",
+    solution:`
+<h4>Order — first to last</h4>
+<p><strong>Client (browser), before anything is sent:</strong></p>
+<ul>
+<li>Business Rule (form scope) — applied on change / save</li>
+<li>JavaScript OnSave — at the Save click (can <code>preventDefault()</code> to cancel)</li>
+</ul>
+<p><em>No guaranteed order between BR and JS for the same field — treat them as one "client gate."</em></p>
+<p><strong>Server (pipeline), if the request was sent:</strong></p>
+<ul>
+<li>Pre-validation plugin (stage 10) → Pre-operation plugin (stage 20)</li>
+<li>Entity-scope BR server actions + real-time workflow set to "before"</li>
+<li>Main write → Post-operation plugin (stage 40) + workflow set to "after"</li>
+</ul>
+<p><strong>After commit (last):</strong> async plugins, background workflows, Power Automate.</p>
+<h4>Who wins</h4>
+<div class="callout key"><strong>Enforcement → the plugin.</strong> It's server-side and synchronous, so it runs on <em>every</em> path (form, API, import, integration) and can't be bypassed. Client validation (form BR + JS) is UX only — skipped by any non-UI write.</div>
+<p><strong>If each <em>sets</em> a value →</strong> the last synchronous writer wins: later stage overwrites earlier; same stage, highest <strong>Execution Order (rank)</strong> writes last.</p>`
+  },
+  {
+    id:"val-brjs-001", topic:"Validation & Scope", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"A Business Rule (form scope) and JavaScript both hide/require the SAME field on the form. Who wins?",
+    options:[
+      "JavaScript always wins — it runs after business rules",
+      "The Business Rule always wins — it's declarative",
+      "No guaranteed order; whichever runs last wins — and BRs re-run on every relevant change, so the winner can flip",
+      "They merge — the field is hidden AND required"
+    ],
+    correct:2,
+    header:"BR vs JS on the Same Field — Last Writer Wins",
+    solution:`
+<p>Both are <strong>client-side</strong> with <strong>no documented order</strong> for the same field. Hiding/requiring is just the last call to <code>setVisible()</code> / <code>setRequiredLevel()</code> — <strong>last writer wins</strong>.</p>
+<p>Because <strong>Business Rules re-run on every change of their condition fields</strong>, a BR can override your JS later in the session (or vice-versa) — the winner can flip as the user edits.</p>
+<div class="callout key"><strong>Rule:</strong> don't split one field's visibility/required logic across BR and JS. Pick one source of truth; if combined, make JS the final authority in an OnChange you control.</div>`
+  },
+  {
+    id:"val-entity-001", topic:"Validation & Scope", type:"MCQ", difficulty:"Advanced", date:"2026-10-11",
+    q:"If that Business Rule is ENTITY scope instead of form scope, does its \"hide field\" / \"set business required\" now get enforced on the server (e.g. for API writes)?",
+    options:[
+      "Yes — entity scope enforces everything server-side",
+      "No — visibility, lock and business-required are form-only actions; entity scope only broadens them to all forms. Only Set Field Value, Set Default Value and Show Error Message run server-side",
+      "Yes, but only for required, not for hide",
+      "Entity-scope business rules don't run on the server at all"
+    ],
+    correct:1,
+    header:"Entity-Scope Business Rules — the Form-Only Actions Catch",
+    solution:`
+<p>Entity scope runs the rule on <strong>all forms</strong> AND on the <strong>server</strong> (create/update, including API/SDK). But on the server, only some actions take effect:</p>
+<table>
+<tr><th>Action</th><th>Server-side?</th></tr>
+<tr><td>Set field value / default value</td><td>Yes</td></tr>
+<tr><td>Show error message (blocks save)</td><td>Yes</td></tr>
+<tr><td>Set visibility, lock/unlock, set business required</td><td>No — form-only</td></tr>
+</table>
+<p>So for <strong>hide / required</strong>, entity scope just means "all forms" — still client-only, still a last-writer race with JS. An API/import can still omit a "required" field.</p>
+<div class="callout key"><strong>To truly require a field on every path:</strong> a synchronous plugin, an alternate key, or a BR Show-Error-Message action — not "Set Business Required".</div>`
+  },
+  {
+    id:"val-scope-001", topic:"Validation & Scope", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"Which of these is enforced on EVERY write path (form, API, import, integration)?",
+    options:[
+      "A form-scope Business Rule that hides a field",
+      "JavaScript OnSave validation",
+      "A synchronous plugin that throws on invalid data",
+      "A business-required marker set by a Business Rule"
+    ],
+    correct:2,
+    header:"Only Server-Side Logic Is Authoritative",
+    solution:`
+<p>Client logic (form BRs, JS) is <strong>skipped</strong> by API/SDK/import/integration — it's UX only. "Business required" and "hidden" are form concepts and never reach the server.</p>
+<p>A <strong>synchronous plugin</strong> runs in the pipeline on every path and can block the write — so it's the authoritative place for real validation. (Entity-scope BR <em>Show Error Message</em> and platform rules like alternate keys / system-required also enforce server-side.)</p>
+<div class="callout key"><strong>Boundary:</strong> UI actions (visibility, lock, business-required, notifications, focus) = form-only. Data actions (set value, throw/error) = reach the server.</div>`
   }
 ];
 
@@ -1238,6 +1317,35 @@ T4  B: write 1003   // duplicate</code></pre>
 <h4>Analytics copy</h4>
 <p>A continuously-updated, <strong>read-only</strong> copy in a Data Lake so heavy reporting (Power BI, Synapse, Fabric) never hits the live app. Slightly behind; the app always reads/writes the real SQL.</p>
 <div class="callout key"><strong>Online you never touch base SQL</strong> — only the read-only TDS endpoint. Every operation crosses the pipeline → security filter → SQL translation, so round-trips dominate cost.</div>`
+  },
+  {
+    id:"n-validation", title:"Validation Precedence & Client/Server Scope", topic:"Validation & Scope",
+    body:`
+<h4>What runs CLIENT-side (form / browser)</h4>
+<p>Form JavaScript (OnLoad/OnChange/OnSave/command-bar), form-scope Business Rules, the <strong>UI actions</strong> of any BR (even entity-scope), PCF client logic. All via <code>formContext</code> / <code>Xrm</code>:</p>
+<ul>
+<li>Show/hide field, tab, section (<code>setVisible</code>)</li>
+<li>Lock/unlock (<code>setDisabled</code>)</li>
+<li>Set / clear business required (<code>setRequiredLevel</code>)</li>
+<li>Set value or default on the form; form notifications / error messages; recommendations; focus; lookup filtering</li>
+</ul>
+<p><strong>Convenience/UX only — skipped by API, SDK, import, Power Automate, integrations. Never trust it for enforcement.</strong></p>
+<h4>What runs SERVER-side (pipeline)</h4>
+<p>Plugins (sync &amp; async), real-time &amp; background workflows, entity-scope BR <em>server</em> actions, Power Automate (after commit), the platform:</p>
+<ul>
+<li>Plugin logic — validate, throw to block, set values, cascade</li>
+<li>Entity-scope BR server actions only: <strong>Set Field Value, Set Default Value, Show Error Message</strong></li>
+<li>Platform: data type, max length, system-required, alternate-key uniqueness, referential integrity, calculated/rollup, duplicate detection, security, auto-number</li>
+</ul>
+<p><strong>Runs on every path — authoritative.</strong></p>
+<div class="callout key"><strong>The dividing line:</strong> UI actions (visibility, lock, business-required, notifications, focus) are <strong>form-only</strong>, never enforced server-side — even from an entity-scope rule. Data actions (set value, throw/error) reach the server.</div>
+<h4>Precedence</h4>
+<ul>
+<li><strong>Order:</strong> client (BR + JS, no guaranteed order between them) → server pipeline (plugins by stage/rank, entity-scope BR, sync workflows) → async (Power Automate, background workflow) last.</li>
+<li><strong>Enforcement winner:</strong> the synchronous <strong>plugin</strong> — every path, can't be bypassed.</li>
+<li><strong>Setting a value:</strong> last synchronous writer wins (later stage, or higher rank in the same stage).</li>
+<li><strong>BR vs JS same field:</strong> last writer wins; BRs re-run on every relevant change, so the winner can flip — keep one field's logic in one place.</li>
+</ul>`
   }
 ];
 
