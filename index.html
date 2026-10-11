@@ -170,6 +170,8 @@ header.top{
   background:var(--accent);border-radius:2px;
 }
 .tab .n{font-family:var(--font-mono);font-size:11px;color:var(--faint);margin-left:7px}
+.tab-link{text-decoration:none;display:inline-flex;align-items:center}
+.tab-link:hover{color:var(--text)}
 
 main{padding:22px 0 72px}
 
@@ -420,6 +422,7 @@ main{padding:22px 0 72px}
     <div class="tabs" role="tablist">
       <button class="tab" id="tabPractice" role="tab" aria-selected="true">Practice<span class="n" id="practiceCount"></span></button>
       <button class="tab" id="tabNotes" role="tab" aria-selected="false">Notes<span class="n" id="notesCount"></span></button>
+      <a class="tab tab-link" href="solution-layering.html">Solution Layering<span class="n">interactive&nbsp;↗</span></a>
     </div>
   </div>
 </header>
@@ -482,7 +485,7 @@ main{padding:22px 0 72px}
    and the "New" filter. Keep ids stable.
    ============================================================ */
 
-const BANK_DATE = "2026-10-08"; // last content update
+const BANK_DATE = "2026-10-11"; // last content update
 
 const QUESTIONS = [
   {
@@ -826,6 +829,211 @@ T4  B: write 1003         // duplicate</code></pre>
     header:"Sandbox Isolation Limits",
     solution:`
 <p>Sandboxed plugins run with restricted trust: <strong>no file system, no registry, no inter-process calls</strong>, and outbound network is limited to standard web ports (443/80) over HTTP/S. Dataverse online requires sandbox isolation; full-trust is an on-prem-only option.</p>`
+  },
+
+  {
+    id:"qb-qefetch-001", topic:"Query & Bulk", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"Which statement is true about QueryExpression vs FetchXML?",
+    options:[
+      "FetchXML is faster because it's pre-compiled",
+      "QueryExpression is faster because it's strongly typed",
+      "Both are translated to the same SQL — performance is equivalent; the choice is about serialization and features",
+      "FetchXML can't do joins, QueryExpression can"
+    ],
+    correct:2,
+    header:"QueryExpression vs FetchXML — Same Engine, Different Shape",
+    solution:`
+<p>Neither is "compiled" or inherently faster. The platform translates <strong>both into the same underlying SQL</strong>, so an identical query performs identically. Choose on serialization + features, never speed.</p>
+<table>
+<tr><th></th><th>QueryExpression</th><th>FetchXML</th></tr>
+<tr><td>Form</td><td>C# object model (typed)</td><td>XML string</td></tr>
+<tr><td>Serializable?</td><td>No</td><td>Yes — store / transmit it</td></tr>
+<tr><td>Used by</td><td>Dynamic queries in code</td><td>Saved views, charts, dashboards, SSRS, rollups</td></tr>
+<tr><td>Aggregation (sum/count/group by)</td><td>No</td><td>Yes</td></tr>
+</table>
+<ul>
+<li>Need to <strong>store/serialize</strong> the query, or need <strong>aggregates</strong> → FetchXML.</li>
+<li>Building dynamically in C# with type safety → QueryExpression.</li>
+<li><strong>LINQ</strong> sits on top and generates QueryExpression under the hood — same engine again.</li>
+</ul>`
+  },
+  {
+    id:"qb-paging-001", topic:"Query & Bulk", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"A RetrieveMultiple matches 12,000 records. With no paging code, how many return in one call, and how do you get them all?",
+    options:[
+      "All 12,000 — Dataverse has no limit",
+      "5,000 max per page — loop using the paging cookie until MoreRecords is false",
+      "1,000 max — then you must use ExecuteMultiple",
+      "2,500 max — raise it with a config setting"
+    ],
+    correct:1,
+    header:"Paging — the 5,000-Record Ceiling",
+    solution:`
+<p>RetrieveMultiple returns <strong>max 5,000 records per page</strong>. Without paging you silently get only the first 5,000 — a classic "the loop only processed some records" bug.</p>
+<pre><code>var all = new List&lt;Entity&gt;();
+query.PageInfo = new PagingInfo { Count = 5000, PageNumber = 1 };
+while (true) {
+    var r = service.RetrieveMultiple(query);
+    all.AddRange(r.Entities);
+    if (!r.MoreRecords) break;
+    query.PageInfo.PageNumber++;
+    query.PageInfo.PagingCookie = r.PagingCookie;   // the key
+}</code></pre>
+<ul>
+<li>The <strong>paging cookie</strong> marks where the last page ended → next page is correct and efficient; without it deep paging gets slow and can skip/duplicate rows.</li>
+<li>Don't rely on <code>TotalRecordCount</code> for big sets (capped, costly) — page until MoreRecords is false.</li>
+<li>Always set a <strong>ColumnSet</strong> — never AllColumns. Wide reads are a top performance killer.</li>
+</ul>`
+  },
+  {
+    id:"qb-bulk-001", topic:"Query & Bulk", type:"Scenario", difficulty:"Advanced", date:"2026-10-11",
+    q:"You must update 20,000 Accounts from a console app. service.Update() in a loop works but is painfully slow. What do you use, and what's the one-line reason it's faster?",
+    options:null,
+    header:"Bulk Updates — ExecuteMultiple vs UpdateMultiple",
+    solution:`
+<p>Plain <code>service.Update()</code> in a loop = <strong>one network round-trip per record</strong> = 20,000 trips. The slowness is the round-trips, not the DB work.</p>
+<h4>Two bulk mechanisms</h4>
+<ul>
+<li><strong>ExecuteMultipleRequest</strong> — package many requests into one call (up to <strong>1,000</strong>). Collapses N round-trips into 1. Still processes items one at a time server-side. Use <code>Settings { ContinueOnError = true, ReturnResponses = false }</code>.</li>
+<li><strong>UpdateMultipleRequest / CreateMultipleRequest</strong> — modern purpose-built bulk messages; the platform processes a same-table set as one optimized batch → higher throughput than ExecuteMultiple. Prefer for large same-entity loads.</li>
+</ul>
+<div class="callout key"><strong>One-liner:</strong> batching removes per-record network round-trips (the real bottleneck); UpdateMultiple goes further by handling the set as one optimized server-side operation.</div>
+<p>Scale further with parallel threads, but respect <strong>service protection limits</strong> — catch 429s and honour Retry-After.</p>`
+  },
+  {
+    id:"qb-exectxn-001", topic:"Query & Bulk", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"What's the key difference between ExecuteMultiple and ExecuteTransaction?",
+    options:[
+      "ExecuteMultiple is atomic; ExecuteTransaction is not",
+      "ExecuteTransaction is all-or-nothing (one transaction, rolls back on any failure); ExecuteMultiple runs each item independently",
+      "They're identical, just different names",
+      "ExecuteTransaction can hold more than 1,000 requests"
+    ],
+    correct:1,
+    header:"ExecuteMultiple vs ExecuteTransaction",
+    solution:`
+<p>Both batch many requests into one call (fewer round-trips). The difference is <strong>atomicity</strong>.</p>
+<table>
+<tr><th></th><th>ExecuteMultiple</th><th>ExecuteTransaction</th></tr>
+<tr><td>Atomic?</td><td>No — each item independent</td><td>Yes — one transaction</td></tr>
+<tr><td>One item fails</td><td>Others still succeed (ContinueOnError)</td><td>Everything rolls back</td></tr>
+<tr><td>Use when</td><td>Bulk ops, partial success OK</td><td>Several ops must all commit or none</td></tr>
+</table>
+<p>Decide by: <em>"is partial success OK?"</em> Import 10k contacts, few bad rows fine → ExecuteMultiple. Create an Order + its lines, all-or-nothing → ExecuteTransaction.</p>`
+  },
+  {
+    id:"qb-nplus1-001", topic:"Query & Bulk", type:"Scenario", difficulty:"Advanced", date:"2026-10-11",
+    q:"You load 500 Accounts, then call service.Retrieve once per Account to get its parent's name (1 + 500 calls). It's slow. What's the anti-pattern called, and how do you fix it in one query?",
+    options:null,
+    header:"The N+1 Query Problem → Link-Entity (joins)",
+    solution:`
+<p>This is the <strong>N+1 query problem</strong>: 1 query for the list, then N more (one per row). Fix it with a <strong>join</strong>, expressed as a <strong>link-entity</strong> — available in both QueryExpression and FetchXML.</p>
+<pre><code>var q = new QueryExpression("account") { ColumnSet = new ColumnSet("name") };
+var parent = q.AddLink("account", "parentaccountid", "accountid");
+parent.EntityAlias = "parent";
+parent.Columns = new ColumnSet("name");   // parent name, same query</code></pre>
+<p>FetchXML equivalent uses <code>&lt;link-entity&gt;</code>. Both compile to a SQL JOIN → <strong>one</strong> round-trip instead of 501.</p>
+<p>Read aliased columns back as <code>AliasedValue</code>: <code>((AliasedValue)acct["parent.name"]).Value</code>.</p>`
+  },
+
+  {
+    id:"tbl-types-001", topic:"Tables & Storage", type:"MCQ", difficulty:"Basic", date:"2026-10-11",
+    q:"Which set correctly lists the Dataverse table TYPES you choose at creation?",
+    options:[
+      "Standard, Custom, System, Managed",
+      "Standard, Activity, Virtual, Elastic",
+      "User-owned, Team-owned, Org-owned",
+      "SQL, Cosmos, Blob, Lake"
+    ],
+    correct:1,
+    header:"The Four Table Types",
+    solution:`
+<p>The <strong>Table type</strong> dropdown at creation offers four:</p>
+<table>
+<tr><th>Type</th><th>For</th><th>Stored in</th></tr>
+<tr><td>Standard</td><td>Normal business data (default)</td><td>SQL</td></tr>
+<tr><td>Activity</td><td>Things with a "when" — task, appointment, call; show in timeline</td><td>SQL</td></tr>
+<tr><td>Virtual</td><td>Data living in an external system; Dataverse only displays it</td><td>external source</td></tr>
+<tr><td>Elastic</td><td>Huge-volume / high-throughput data</td><td>Cosmos DB</td></tr>
+</table>
+<p>Two other axes: <strong>ownership</strong> (User/Team-owned vs Organization-owned, set at creation, can't change) and <strong>origin</strong> (System out-of-box vs Custom with your prefix). Account = Standard + User-owned + System.</p>`
+  },
+  {
+    id:"tbl-elastic-001", topic:"Tables & Storage", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"An Elastic table is backed by which store, and when should you reach for it?",
+    options:[
+      "Azure SQL — for normal business records",
+      "Azure Blob — for files and images",
+      "Azure Cosmos DB — for huge-volume, high-throughput data (telemetry, IoT, logs)",
+      "Azure Data Lake — for reporting"
+    ],
+    correct:2,
+    header:"Elastic Tables — Cosmos-Backed, Massive Scale",
+    solution:`
+<p>Elastic tables live in <strong>Azure Cosmos DB</strong>, built for <strong>huge, fast, spiky</strong> volumes — millions of rows/day, write-heavy, rarely updated (IoT, telemetry, logs, events).</p>
+<ul>
+<li>Auto-scales horizontally; optional <strong>TTL</strong> auto-expires old rows.</li>
+<li>Scales via a <strong>partition key</strong> — query by partition key + id for fastest reads.</li>
+<li>Trade-offs: <strong>no cross-table transactions</strong>, limited relationships/rollups.</li>
+<li><strong>Can't convert</strong> Standard ↔ Elastic later — pick at creation.</li>
+</ul>
+<div class="callout key"><strong>Rule:</strong> Standard (SQL) is the default and right for normal records. Reach for Elastic only when extreme volume demands it.</div>`
+  },
+  {
+    id:"tbl-virtual-001", topic:"Tables & Storage", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"Where does the data for a Virtual table physically live?",
+    options:[
+      "In Dataverse SQL, like any table",
+      "In an external system — Dataverse only reads/surfaces it, doesn't store it",
+      "In Azure Blob storage",
+      "In Cosmos DB"
+    ],
+    correct:1,
+    header:"Virtual Tables — a Window, Not a Store",
+    solution:`
+<p>A <strong>virtual table</strong> maps to data in an <strong>external source</strong> (another DB, a REST API). Dataverse presents it like a table for read (and, with the right provider, write) but <strong>stores nothing</strong> itself. Use it to surface external data without copying it in.</p>`
+  },
+  {
+    id:"tbl-analytics-001", topic:"Tables & Storage", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"What is the Dataverse \"analytics copy\" (via Synapse Link / Microsoft Fabric)?",
+    options:[
+      "A second live database users write to",
+      "A continuously-updated, read-only copy of your data in a Data Lake, so heavy reporting doesn't hit the live app",
+      "A backup you restore from",
+      "The audit log table"
+    ],
+    correct:1,
+    header:"Analytics Copy — Reporting Without Slowing the App",
+    solution:`
+<p>The live SQL database serves fast app reads/writes. Big BI queries (years of data, group-by, trends) would compete with users. The <strong>analytics copy</strong> continuously exports data to an <strong>Azure Data Lake</strong> (via <strong>Synapse Link</strong> or <strong>Microsoft Fabric</strong>), where Power BI / Synapse / Fabric query it instead.</p>
+<ul>
+<li><strong>Read-only</strong> and slightly <strong>behind</strong> (continuous, not instant).</li>
+<li>The app always reads/writes the real SQL; the lake is downstream for analytics (OLAP), not the system of record.</li>
+</ul>
+<div class="callout"><strong>Kitchen analogy:</strong> don't let accountants count inventory in the middle of dinner service — give them a photocopy of the books in another room.</div>`
+  },
+  {
+    id:"tbl-storage-001", topic:"Tables & Storage", type:"MCQ", difficulty:"Intermediate", date:"2026-10-11",
+    q:"Dataverse isn't one database — it routes by data type. Which mapping is correct?",
+    options:[
+      "Everything, including files, lives in one SQL table",
+      "Records → SQL; file/image columns & attachments → Blob; elastic tables → Cosmos; analytics copy → Data Lake",
+      "Records → Cosmos; files → SQL",
+      "All data → Data Lake, queried live"
+    ],
+    correct:1,
+    header:"Where Dataverse Actually Stores Things",
+    solution:`
+<table>
+<tr><th>What</th><th>Stored in</th></tr>
+<tr><td>Record + most columns</td><td>Azure SQL (one DB per environment)</td></tr>
+<tr><td>File/image columns, note & email attachments</td><td>Azure Blob Storage</td></tr>
+<tr><td>Elastic tables</td><td>Azure Cosmos DB</td></tr>
+<tr><td>Async jobs / plugin trace</td><td>AsyncOperation / PluginTraceLog (SQL)</td></tr>
+<tr><td>Relevance search index</td><td>Azure AI / Cognitive Search</td></tr>
+<tr><td>Analytics copy (Synapse/Fabric)</td><td>Azure Data Lake</td></tr>
+</table>
+<p>Online, you never touch base SQL directly — the only door is the read-only <strong>TDS endpoint</strong>. Every read/write crosses the pipeline → security filter → SQL translation, so <strong>round-trips dominate cost</strong>.</p>`
   }
 ];
 
@@ -972,6 +1180,63 @@ T4  B: write 1003   // duplicate</code></pre>
 <li><strong>Stateless only:</strong> the plugin instance is cached and reused across threads — keep request state in locals, never in fields.</li>
 <li><strong>Sandbox isolation</strong> (required online): no file system/registry, outbound only on 443/80.</li>
 </ul>`
+  },
+  {
+    id:"n-query-bulk", title:"Querying & Bulk Operations", topic:"Query & Bulk",
+    body:`
+<h4>QueryExpression vs FetchXML</h4>
+<p>Both compile to the <strong>same SQL</strong> — performance is identical. Choose on features:</p>
+<ul>
+<li><strong>FetchXML</strong> — XML, <strong>serializable</strong> (saved views, charts, reports, rollups); supports <strong>aggregation / group-by</strong>.</li>
+<li><strong>QueryExpression</strong> — typed C# object model for queries built dynamically in code.</li>
+<li><strong>LINQ</strong> generates QueryExpression under the hood.</li>
+</ul>
+<h4>Paging</h4>
+<p>Max <strong>5,000 rows per page</strong>. Loop with the <strong>paging cookie</strong> until <code>MoreRecords</code> is false. Always set a ColumnSet; never AllColumns.</p>
+<h4>Bulk</h4>
+<ul>
+<li><strong>ExecuteMultiple</strong> — batch up to 1,000 requests, fewer round-trips, each independent (ContinueOnError for partial success).</li>
+<li><strong>UpdateMultiple / CreateMultiple</strong> — modern bulk messages, one optimized server-side batch for a same-table set; higher throughput.</li>
+<li><strong>ExecuteTransaction</strong> — all-or-nothing; any failure rolls back everything.</li>
+</ul>
+<div class="callout key"><strong>The real cost is network round-trips.</strong> Batching removes them; link-entity joins remove the N+1 problem.</div>
+<h4>N+1</h4>
+<p>Retrieving related data one row at a time = the <strong>N+1 problem</strong>. Fix with a <strong>link-entity</strong> join (QueryExpression <code>AddLink</code> or FetchXML <code>&lt;link-entity&gt;</code>) → one query, one round-trip.</p>`
+  },
+  {
+    id:"n-table-types", title:"Table Types & Ownership", topic:"Tables & Storage",
+    body:`
+<h4>Four table types (chosen at creation)</h4>
+<table>
+<tr><th>Type</th><th>For</th><th>Stored in</th></tr>
+<tr><td>Standard</td><td>Normal business data (default)</td><td>SQL</td></tr>
+<tr><td>Activity</td><td>Task/appointment/call — has a "when", shows in timeline</td><td>SQL</td></tr>
+<tr><td>Virtual</td><td>External data Dataverse only surfaces</td><td>external source</td></tr>
+<tr><td>Elastic</td><td>Huge-volume / high-throughput</td><td>Cosmos DB</td></tr>
+</table>
+<h4>Two more axes</h4>
+<ul>
+<li><strong>Ownership</strong> — User/Team-owned (rows have an owner, drives security) vs Organization-owned (no per-row owner, e.g. config). Set at creation, can't change.</li>
+<li><strong>Origin</strong> — System (out-of-box) vs Custom (your prefix).</li>
+</ul>
+<p>Create Elastic: maker portal → New table (advanced properties) → <strong>Type = Elastic</strong>; or Web API <code>"TableType":"Elastic"</code>. It's one-way — you can't convert to/from Standard.</p>`
+  },
+  {
+    id:"n-storage", title:"Where Dataverse Stores Data", topic:"Tables & Storage",
+    body:`
+<p>Dataverse isn't one database — it's an application server that routes by data type:</p>
+<table>
+<tr><th>What</th><th>Store</th></tr>
+<tr><td>Record + most columns</td><td>Azure SQL (one DB per environment)</td></tr>
+<tr><td>File/image columns, attachments</td><td>Azure Blob Storage</td></tr>
+<tr><td>Elastic tables</td><td>Azure Cosmos DB</td></tr>
+<tr><td>Async jobs / plugin trace</td><td>AsyncOperation / PluginTraceLog (SQL)</td></tr>
+<tr><td>Relevance search</td><td>Azure AI / Cognitive Search index</td></tr>
+<tr><td>Analytics copy (Synapse Link / Fabric)</td><td>Azure Data Lake</td></tr>
+</table>
+<h4>Analytics copy</h4>
+<p>A continuously-updated, <strong>read-only</strong> copy in a Data Lake so heavy reporting (Power BI, Synapse, Fabric) never hits the live app. Slightly behind; the app always reads/writes the real SQL.</p>
+<div class="callout key"><strong>Online you never touch base SQL</strong> — only the read-only TDS endpoint. Every operation crosses the pipeline → security filter → SQL translation, so round-trips dominate cost.</div>`
   }
 ];
 
