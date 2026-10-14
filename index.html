@@ -1394,6 +1394,76 @@ foreach (var line in service.RetrieveMultiple(query).Entities)
 <tr><td>GrantAccess in code</td><td>Hierarchy security (manager/position)</td></tr>
 </table>
 <div class="callout key"><strong>Why it matters:</strong> moving access from <em>sharing</em> to <em>roles/teams/hierarchy</em> removes POA rows → better performance. Cascading shares are the silent POA explosion.</div>`
+  },
+
+  {
+    id:"alm-managed-001", topic:"ALM & Solutions", type:"MCQ", difficulty:"Basic", date:"2026-10-14",
+    q:"Why do you develop unmanaged but ship managed to Test/Prod?",
+    options:[
+      "Managed solutions import faster",
+      "Unmanaged is the editable source (Dev); managed is the sealed, removable output — it gives clean upgrades and rollback, which unmanaged can't",
+      "Managed solutions don't need a publisher",
+      "There's no real difference"
+    ],
+    correct:1,
+    header:"Develop Unmanaged, Ship Managed",
+    solution:`
+<p><strong>Unmanaged</strong> = editable source, lives in Dev. <strong>Managed</strong> = sealed output, imported into Test/Prod — components are locked and the whole layer is <strong>removable</strong> (clean uninstall/rollback).</p>
+<div class="callout key"><strong>Red flag:</strong> shipping unmanaged to Prod — you lose clean upgrade and rollback, and its components bake into the layer (no clean uninstall). Only Dev is hand-edited; Test/Prod receive imports.</div>`
+  },
+  {
+    id:"alm-wontshow-001", topic:"ALM & Solutions", type:"Scenario", difficulty:"Advanced", date:"2026-10-14",
+    q:"A teammate edited a form directly in Prod last month. You ship a managed solution with a new version of that form; the import succeeds but Prod still shows the old form. Why, and the fix?",
+    options:null,
+    header:"\"My Managed Update Won't Show\" — Active Layer",
+    solution:`
+<p>The direct Prod edit created an <strong>Unmanaged (Active) layer</strong> on that form. The active layer sits <strong>above all managed layers</strong>, so it wins over your import — your new managed form is installed but buried.</p>
+<p><strong>Fix:</strong> on the form → <strong>Remove Active Customization</strong>. The active layer lifts off and your top-most managed version resolves. <strong>Prevent it:</strong> never hand-edit Prod.</p>
+<div class="callout key">This is the Solution Layering rule applied to ALM: top-most layer wins, and unmanaged (Active) is always on top.</div>`
+  },
+  {
+    id:"alm-upgrade-001", topic:"ALM & Solutions", type:"Scenario", difficulty:"Advanced", date:"2026-10-14",
+    q:"In Dev you delete a column and remove it from the solution. You export managed and import to Prod — but the column is still there. Why didn't the deletion propagate, and how do you make it?",
+    options:null,
+    header:"Update vs Upgrade — Only Upgrade Deletes",
+    solution:`
+<p>The import ran as an <strong>Update</strong>, which adds/updates components but <strong>never deletes</strong> ones removed from the solution. So the column survives.</p>
+<p><strong>Fix:</strong> import as an <strong>Upgrade</strong> (or <strong>Stage for Upgrade → Apply</strong>) — an upgrade deletes components removed since the previous version.</p>
+<table>
+<tr><th>Mode</th><th>Deletes removed components?</th><th>Notes</th></tr>
+<tr><td>Update</td><td>No</td><td>keeps everything</td></tr>
+<tr><td>Upgrade</td><td>Yes</td><td>one step, clean</td></tr>
+<tr><td>Stage for Upgrade</td><td>Yes (on Apply)</td><td>two steps, control timing/downtime</td></tr>
+</table>
+<p>You pick this at import time (only when a prior version exists). In DevOps/CLI: <code>--import-as-holding</code> + apply upgrade = Upgrade; plain import = Update.</p>`
+  },
+  {
+    id:"alm-portability-001", topic:"ALM & Solutions", type:"Scenario", difficulty:"Intermediate", date:"2026-10-14",
+    q:"A managed flow fails in the client's Prod — it still uses your personal Dev connection, and an API URL it calls differs per environment. What two components make one managed solution work everywhere?",
+    options:null,
+    header:"Connection References + Environment Variables",
+    solution:`
+<ul>
+<li><strong>Connection reference</strong> — decouples the flow from <em>whose</em> connection it uses; rebind to the env's own connection (a <strong>service account</strong> in Prod) at deploy time. Fixes the "still using your Dev connection" failure.</li>
+<li><strong>Environment variable</strong> — holds a value that differs per env (the API URL, a flag); ship the variable, set its <strong>value</strong> per environment.</li>
+</ul>
+<div class="callout key"><strong>Memory hook:</strong> connection reference = <em>which connection</em> (who); environment variable = <em>which value</em> (what). Never hard-code either.</div>
+<p><strong>PREXA365:</strong> billing-API URL as an env variable (sandbox vs live); invoice flow uses a connection reference so Prod runs it as a service account, not your login.</p>`
+  },
+  {
+    id:"alm-publisher-001", topic:"ALM & Solutions", type:"MCQ", difficulty:"Basic", date:"2026-10-14",
+    q:"What does a solution's publisher determine, and why does it matter?",
+    options:[
+      "The solution's version number",
+      "The prefix (e.g. avpx_, av_) stamped on every component — a namespace so your components don't collide with Microsoft's or another ISV's",
+      "Whether the solution is managed or unmanaged",
+      "Which environment it deploys to"
+    ],
+    correct:1,
+    header:"Publisher & Prefix",
+    solution:`
+<p>The <strong>publisher</strong> sets the <strong>prefix</strong> on everything you create — a namespace preventing collisions. Set it <strong>before</strong> building; you can't change a component's prefix later.</p>
+<div class="callout key"><strong>Trap:</strong> building in the default "Common Data Services Default Solution" dumps everything in one bucket with the default publisher. Always build in <strong>your own named solution</strong> with your publisher (PREXA: <code>avpx_</code> / <code>av_</code>).</div>`
   }
 ];
 
@@ -1795,6 +1865,42 @@ foreach (var line in service.RetrieveMultiple(q).Entities) {
 <li>Bulk audit → <strong>SQL 4 CDS</strong> (XrmToolBox) over the TDS endpoint, querying <code>principalobjectaccess</code>.</li>
 </ul>
 <div class="callout key"><strong>One-liner:</strong> POA is the per-record sharing table — one row per principal·record·rights. Shares and access teams write to it; ownership, roles, BU and hierarchy don't. It's consulted on every access check and grows per share, so architects minimize sharing.</div>`
+  },
+  {
+    id:"n-alm", title:"ALM & Solutions — Ship Dev → Test → Prod", topic:"ALM & Solutions",
+    body:`
+<p><strong>ALM = Application Lifecycle Management</strong> — how a change travels safely from Dev to Prod, repeatably. You move <strong>solutions</strong> between <strong>environments</strong>.</p>
+<h4>The golden rule</h4>
+<p><strong>Only Dev is hand-edited.</strong> Test and Prod <strong>receive imports</strong>. You develop <strong>unmanaged</strong> and ship <strong>managed</strong>.</p>
+<table>
+<tr><th></th><th>Unmanaged</th><th>Managed</th></tr>
+<tr><td>What</td><td>editable source</td><td>sealed output</td></tr>
+<tr><td>Lives in</td><td>Dev</td><td>Test / Prod</td></tr>
+<tr><td>Remove?</td><td>can't uninstall — baked in</td><td>uninstall cleanly (layer lifts off)</td></tr>
+</table>
+<h4>Publisher &amp; prefix</h4>
+<p>Sets the namespace prefix (<code>avpx_</code>, <code>av_</code>) on everything — avoids collisions. Build in your <strong>own named solution</strong>, never the default. Set the publisher before building (prefix can't change later).</p>
+<h4>Update vs Upgrade (deletions)</h4>
+<ul>
+<li><strong>Update</strong> — adds/updates; <strong>never deletes</strong> removed components.</li>
+<li><strong>Upgrade</strong> — applies new version <strong>and deletes</strong> components removed since last version. Default for releases.</li>
+<li><strong>Stage for Upgrade</strong> — two-step upgrade; control <em>when</em> it applies (downtime).</li>
+<li><strong>Patch</strong> — small additive hotfix on a base; doesn't delete; fold back into base later.</li>
+</ul>
+<h4>Portability (one solution, every env)</h4>
+<ul>
+<li><strong>Environment variable</strong> — a value that differs per env (API URL, flag); set the value per environment. <em>Which value.</em></li>
+<li><strong>Connection reference</strong> — which connection a flow uses; rebind to the env's connection (service account in Prod). <em>Which connection.</em></li>
+</ul>
+<h4>Deployment</h4>
+<p>Manual import · <strong>Power Platform Pipelines</strong> (low-code, in-portal) · <strong>Azure DevOps / GitHub</strong> (Build Tools, source-controlled). Your signed plugin assembly flows in the solution.</p>
+<h4>Common traps</h4>
+<ul>
+<li>Editing Prod directly → unmanaged Active layer overrides your managed import ("won't show up"). Fix: Remove Active Customization.</li>
+<li>Shipping unmanaged to Prod → no clean upgrade/rollback.</li>
+<li>Hard-coding URLs/GUIDs → use env variables / connection references.</li>
+</ul>
+<div class="callout key"><strong>One breath:</strong> build unmanaged in Dev (your solution + prefix) → ship managed to Test then Prod (never hand-edit them) → rebind per-env values with environment variables &amp; connection references → release with Upgrade (Patch for hotfixes) via pipelines.</div>`
   }
 ];
 
