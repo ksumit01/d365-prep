@@ -1901,6 +1901,24 @@ foreach (var line in service.RetrieveMultiple(q).Entities) {
 <li>Hard-coding URLs/GUIDs → use env variables / connection references.</li>
 </ul>
 <div class="callout key"><strong>One breath:</strong> build unmanaged in Dev (your solution + prefix) → ship managed to Test then Prod (never hand-edit them) → rebind per-env values with environment variables &amp; connection references → release with Upgrade (Patch for hotfixes) via pipelines.</div>`
+  },
+  {
+    id:"n-alm-connrefs", title:"ALM — Binding Connection References per Environment", topic:"ALM & Solutions",
+    body:`
+<p>A connection reference must be <strong>bound to a real connection that exists in the target environment</strong> — so the flow runs as that env's account (ideally a <strong>service account</strong>), not your Dev login. You bind it <strong>at import time</strong>.</p>
+<h4>Prerequisite</h4>
+<p>The connection must <strong>already exist in the target env</strong> — create it there signed in as the service account (Dataverse, SQL, HTTP, …). The reference then points at it.</p>
+<h4>Three ways to set it</h4>
+<ul>
+<li><strong>Manual import (maker)</strong> — the import wizard has a step: <em>Set up connection references and environment variables</em>. Pick/create the connection for each reference; type each env-variable value.</li>
+<li><strong>Power Platform Pipelines</strong> — set Connection References + Environment Variables in the pipeline's <strong>deployment step</strong> for that stage.</li>
+<li><strong>Azure DevOps / CLI</strong> — a <strong>deployment settings file</strong> per env, source-controlled:
+<pre><code>pac solution create-settings --solution-zip Prexa.zip --settings-file prod.settings.json
+# fill each connection-reference → connection id, each env-var → value
+pac solution import --path Prexa.zip --settings-file prod.settings.json</code></pre>
+The DevOps "Import Solution" task can "Use deployment settings file". Repeatable, no manual clicking.</li>
+</ul>
+<div class="callout key"><strong>Best practice:</strong> target connections use a <strong>service account</strong> (so a flow doesn't break when a person leaves); keep a settings file per environment (Dev/Test/Prod) in source control.</div>`
   }
 ];
 
