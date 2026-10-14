@@ -487,7 +487,7 @@ main{padding:22px 0 72px}
    and the "New" filter. Keep ids stable.
    ============================================================ */
 
-const BANK_DATE = "2026-10-11"; // last content update
+const BANK_DATE = "2026-10-14"; // last content update
 
 const QUESTIONS = [
   {
@@ -1241,6 +1241,136 @@ foreach (var line in service.RetrieveMultiple(query).Entities)
 }</code></pre>
 <div class="callout key"><strong>Gotcha:</strong> it's global — fires for every N:N associate. Always check the relationship schema name and exit early.</div>
 <p><strong>PREXA365:</strong> Assets ↔ Rental Agreement → mark assets Reserved. <strong>Enterprise:</strong> Contacts ↔ Marketing List → flag campaign-eligible.</p>`
+  },
+
+  {
+    id:"sec-additive-001", topic:"Security Model", type:"MCQ", difficulty:"Intermediate", date:"2026-10-14",
+    q:"Raj has two roles: Role A gives Read Account at User level, Role B gives Read Account at Organization level. What can he read, and what's the rule?",
+    options:[
+      "Only his own records — the stricter role wins",
+      "All records — roles are additive, the union applies and the widest (least-restrictive) level wins; there is no deny",
+      "Nothing — the two roles conflict and cancel out",
+      "Only records shared with him"
+    ],
+    correct:1,
+    header:"Roles Are Additive — Least-Restrictive Wins",
+    solution:`
+<p>Raj reads <strong>all</strong> Accounts. Effective access = the <strong>union</strong> of every role (his own + each team's), and the <strong>widest access level dominates</strong>. User + Organization → Organization.</p>
+<div class="callout key"><strong>There is no "deny".</strong> A second role can never shrink what another grants — you can't lock someone down by adding a restrictive role; you remove the permissive one. (The lone exception is column security.)</div>
+<p>Say it: <em>"additive, union, least-restrictive wins."</em></p>`
+  },
+  {
+    id:"sec-levels-001", topic:"Security Model", type:"MCQ", difficulty:"Basic", date:"2026-10-14",
+    q:"Which lists the 5 access levels from narrowest to widest?",
+    options:[
+      "User → Business Unit → Parent:Child → Organization → None",
+      "None → User → Business Unit → Parent:Child → Organization",
+      "None → Organization → Business Unit → User → Parent:Child",
+      "Basic → Local → Global → Deep → None"
+    ],
+    correct:1,
+    header:"The 5 Access Levels (the \"whose records\" dial)",
+    solution:`
+<table>
+<tr><th>Level</th><th>Means</th></tr>
+<tr><td>None</td><td>nothing</td></tr>
+<tr><td>User (Basic)</td><td>your own records + shared with you + your team's</td></tr>
+<tr><td>Business Unit (Local)</td><td>records owned by anyone in your BU</td></tr>
+<tr><td>Parent:Child (Deep)</td><td>your BU <strong>+ every BU beneath it</strong></td></tr>
+<tr><td>Organization (Global)</td><td>every record, any BU</td></tr>
+</table>
+<p>A privilege answers "<strong>what</strong> can I do"; the access level answers "<strong>whose</strong> records." A role is a grid of the two for every table.</p>`
+  },
+  {
+    id:"sec-append-001", topic:"Security Model", type:"Scenario", difficulty:"Intermediate", date:"2026-10-14",
+    q:"A clerk can create a Rental Order Line Item but gets a privilege error when attaching it to a Rental Reservation. Role has Create+Write+Read on the line, Read only on the reservation. What's missing?",
+    options:null,
+    header:"Append vs Append To — You Need Both Sides",
+    solution:`
+<ul>
+<li><strong>Append</strong> on the <strong>Rental Order Line Item</strong> (the child) — permission to attach <em>this</em> record to another.</li>
+<li><strong>Append To</strong> on the <strong>Rental Reservation</strong> (the parent) — permission to let others attach <em>to this</em> record.</li>
+</ul>
+<div class="callout key"><strong>Memory hook:</strong> child asks to join (Append), parent agrees to be joined (Append To) — you need both. Symptom of missing it: "I can create the child but can't link it to the parent."</div>
+<p><strong>Enterprise:</strong> add a Contact to an Account → Append on Contact + Append To on Account.</p>`
+  },
+  {
+    id:"sec-ladder-001", topic:"Security Model", type:"Scenario", difficulty:"Advanced", date:"2026-10-14",
+    q:"One reservation owned by a Calgary user must become visible to a Toronto clerk — just that record — without changing the clerk's role or the record's owner. Give two ways and which scales for a recurring need.",
+    options:null,
+    header:"The Access Ladder — Roles/Teams → Access Teams → Sharing",
+    solution:`
+<ul>
+<li><strong>Direct share (POA)</strong> — share that one record with the clerk. Manual, one-off; every share is a row in the <strong>Principal Object Access (POA)</strong> table, which bloats at scale.</li>
+<li><strong>Access team</strong> — attach the record to an access team (via a team template) and add the clerk. Membership-managed; scales far better for a recurring need.</li>
+</ul>
+<div class="callout key"><strong>The ladder:</strong> start high, drop only when needed. Structural need → <strong>role/team</strong>. Known group collaborating on specific records → <strong>access team</strong>. One person, one record, once → <strong>direct share</strong>. Solving a structural need with sharing is the junior mistake — POA explodes.</div>`
+  },
+  {
+    id:"sec-teams-001", topic:"Security Model", type:"MCQ", difficulty:"Intermediate", date:"2026-10-14",
+    q:"What's the core difference between an owner team and an access team?",
+    options:[
+      "Owner teams are for admins; access teams are for end users",
+      "An owner team can own records and holds security roles (members inherit); an access team can't own anything — records are shared to it (POA)",
+      "They're the same, just named differently",
+      "Access teams can own records; owner teams cannot"
+    ],
+    correct:1,
+    header:"Owner Team vs Access Team",
+    solution:`
+<p>Both are set by the team's <strong>Team Type</strong> field (Owner / Access / Entra ID group).</p>
+<table>
+<tr><th></th><th>Owner team</th><th>Access team</th></tr>
+<tr><td>Can own records?</td><td>Yes</td><td>No</td></tr>
+<tr><td>Holds security roles?</td><td>Yes — members inherit</td><td>No</td></tr>
+<tr><td>Grants access by</td><td>its role (what + whose)</td><td>records shared to it (POA)</td></tr>
+<tr><td>Use for</td><td>a department that owns data</td><td>collaboration on specific records</td></tr>
+</table>
+<p><strong>Auto access teams</strong> use an <strong>Access Team Template</strong>: you add a subgrid to the form bound to the template; at runtime you drop <strong>users</strong> into it (not teams), and Dataverse auto-creates the hidden access team for that record. Adding users requires the <strong>Share</strong> privilege, and you can't grant more than you hold.</p>`
+  },
+  {
+    id:"sec-hierarchy-001", topic:"Security Model", type:"Scenario", difficulty:"Advanced", date:"2026-10-14",
+    q:"A branch manager must see and edit her team's records but NOT another branch's, without bumping her role to Business Unit or Organization access. Which feature, and its two flavours?",
+    options:null,
+    header:"Hierarchy Security — Manager vs Position",
+    solution:`
+<p><strong>Hierarchy security</strong> — gives managers access to their reports' records automatically, without changing anyone's access level.</p>
+<ul>
+<li><strong>Manager hierarchy</strong> — uses the <code>Manager</code> field; reaches reports below, limited by <strong>Depth</strong>. <strong>BU-bound</strong>: the manager must be in the same or a parent BU.</li>
+<li><strong>Position hierarchy</strong> — uses a <strong>Position</strong> tree (not the direct manager chain); <strong>can cross business units</strong>.</li>
+</ul>
+<p>Access isn't uniform: <strong>direct reports</strong> → read + write; <strong>deeper reports</strong> (within Depth) → read-only. Only <strong>one</strong> model is active at a time.</p>
+<div class="callout key"><strong>Pick Position over Manager</strong> when the person who should see the data isn't the literal line manager, or access must span BUs.</div>`
+  },
+  {
+    id:"sec-depth-001", topic:"Security Model", type:"MCQ", difficulty:"Basic", date:"2026-10-14",
+    q:"In hierarchy security, what does Depth control?",
+    options:[
+      "How many security roles a user can hold",
+      "How many levels below a manager the hierarchy access reaches",
+      "The number of business units allowed",
+      "How many fields are column-secured"
+    ],
+    correct:1,
+    header:"Hierarchy Depth",
+    solution:`
+<p><strong>Depth = how many levels down</strong> the org chart a manager's hierarchy access extends. Depth 3 → a manager reaches data up to 3 levels below them; anyone deeper gets nothing via hierarchy.</p>
+<p>Lower depth = tighter and cheaper; higher depth = a senior reaches more levels. Direct report = read/write; deeper (within depth) = read-only.</p>`
+  },
+  {
+    id:"sec-column-001", topic:"Security Model", type:"Scenario", difficulty:"Advanced", date:"2026-10-14",
+    q:"Clerks can open an Asset record, but the Asset Amount (cost) field must be hidden from them and visible only to managers. How, and why is this the one 'subtractive' piece? And why might a test show the field still editable?",
+    options:null,
+    header:"Column (Field) Security — the Subtractive Exception",
+    solution:`
+<h4>Setup (two pieces)</h4>
+<ul>
+<li>On the column → <strong>Enable column security = Yes</strong> (publish). Now it's hidden from <em>everyone</em>.</li>
+<li>Create a <strong>Column Security Profile</strong> → set <strong>Read = Allowed</strong> on that field → add the <strong>Managers</strong> team/users. Everyone else sees <code>••••••</code>.</li>
+</ul>
+<h4>Why "subtractive"</h4>
+<p>Everything else in Dataverse is <strong>additive</strong> (you start with nothing, grants add up, no deny). Column security is the <strong>one exception</strong>: enabling it <strong>removes</strong> the field for all, and you opt people back in.</p>
+<div class="callout key"><strong>Test gotcha:</strong> the <strong>System Administrator bypasses column security</strong> — admins always see and edit secured fields. Always test with a non-admin. Read=Yes + Update=No → they see the value but the field is <strong>read-only</strong>.</div>`
   }
 ];
 
@@ -1536,6 +1666,71 @@ foreach (var line in service.RetrieveMultiple(q).Entities) {
 <h4>N:N</h4>
 <p>Global <strong>Associate</strong> message; read <code>Relationship</code>, <code>Target</code>, <code>RelatedEntities</code> from InputParameters; filter by schema name and exit early (it fires for every associate). PREXA: Assets ↔ Rental Agreement.</p>
 <div class="callout key"><strong>SetRelated/Secondary Entity never fires on a field edit</strong> — it's a legacy relate message. Field change = Update.</div>`
+  },
+  {
+    id:"n-security-core", title:"Security Model — Roles, Levels, Privileges", topic:"Security Model",
+    body:`
+<p>Every permission is <strong>two questions</strong>: <strong>what</strong> can you do (privilege) + <strong>whose</strong> records (access level). A security role is a grid of both for every table.</p>
+<h4>The 8 privileges</h4>
+<p>Create · Read · Write · Delete · <strong>Append</strong> · <strong>Append To</strong> · Assign · Share.</p>
+<h4>The 5 access levels (narrow → wide)</h4>
+<table>
+<tr><th>Level</th><th>Whose records</th></tr>
+<tr><td>None</td><td>nothing</td></tr>
+<tr><td>User (Basic)</td><td>own + shared + team's</td></tr>
+<tr><td>Business Unit (Local)</td><td>anyone in your BU</td></tr>
+<tr><td>Parent:Child (Deep)</td><td>your BU + BUs beneath it</td></tr>
+<tr><td>Organization (Global)</td><td>every record</td></tr>
+</table>
+<h4>The rules</h4>
+<ul>
+<li><strong>Additive</strong> — effective access = union of all roles (user + every team); <strong>least-restrictive wins</strong>.</li>
+<li><strong>No deny</strong> — a second role can't shrink access (only column security is subtractive).</li>
+<li><strong>Business Unit</strong> = the boundary access levels measure against; every record's BU = its owner's BU.</li>
+</ul>
+<h4>Append vs Append To</h4>
+<p>Link a child to a parent → <strong>Append</strong> on the child + <strong>Append To</strong> on the parent. Need both. (PREXA: Append on Rental Order Line + Append To on Reservation. Enterprise: Append on Contact + Append To on Account.)</p>`
+  },
+  {
+    id:"n-security-sharing", title:"Security — Teams, Access Teams & Sharing", topic:"Security Model",
+    body:`
+<h4>The access ladder (use the highest that fits)</h4>
+<table>
+<tr><th></th><th>Roles / teams</th><th>Access teams</th><th>Direct sharing</th></tr>
+<tr><td>Granularity</td><td>whole table</td><td>specific records</td><td>one record</td></tr>
+<tr><td>Managed by</td><td>role design</td><td>team membership</td><td>manual, per record</td></tr>
+<tr><td>POA load</td><td>none</td><td>yes (managed)</td><td>yes (unmanaged)</td></tr>
+<tr><td>Scale</td><td>millions</td><td>thousands</td><td>tens</td></tr>
+<tr><td>Use for</td><td>the normal rule</td><td>planned collaboration</td><td>one-off exception</td></tr>
+</table>
+<h4>Teams (Team Type field)</h4>
+<ul>
+<li><strong>Owner team</strong> — can own records, holds roles (members inherit).</li>
+<li><strong>Access team</strong> — can't own; records are shared to it. <strong>Auto access team</strong> = an <strong>Access Team Template</strong> (per table, with chosen rights) + a subgrid on the form; drop <strong>users</strong> in → Dataverse auto-creates the hidden team for that record.</li>
+<li><strong>Entra ID group team</strong> — membership synced from Azure AD.</li>
+</ul>
+<h4>Sharing (POA)</h4>
+<p>Grants one user/team access to one record; every share is a <strong>Principal Object Access</strong> row. Needs the <strong>Share</strong> privilege, and you can't grant more than you hold. Use for exceptions only — it doesn't scale.</p>
+<div class="callout key"><strong>Junior mistake:</strong> solving a structural need with sharing → POA bloats, performance drops. Push it up the ladder into a role/team.</div>`
+  },
+  {
+    id:"n-security-hierarchy-column", title:"Security — Hierarchy & Column Security", topic:"Security Model",
+    body:`
+<h4>Hierarchy security — managers see reports' records</h4>
+<p>Extends a role without changing its access level. One model active at a time.</p>
+<ul>
+<li><strong>Manager hierarchy</strong> — via the <code>Manager</code> field; <strong>BU-bound</strong> (manager in same/parent BU).</li>
+<li><strong>Position hierarchy</strong> — via a Position tree; <strong>can cross BUs</strong>.</li>
+<li><strong>Depth</strong> = how many levels down it reaches. Direct report → read/write; deeper (within depth) → read-only.</li>
+</ul>
+<h4>Column (field) security — hide one field</h4>
+<p>Role access is record-level. To restrict a single sensitive field:</p>
+<ul>
+<li>On the column → <strong>Enable column security</strong> (publish) → hidden for everyone.</li>
+<li><strong>Column Security Profile</strong> → set Read/Update/Create on the field → add the users/teams who may see it. Others see <code>••••••</code>.</li>
+<li><strong>Read unmasked</strong> matters only with a masking rule; <strong>Update=No</strong> → view-only.</li>
+</ul>
+<div class="callout key"><strong>Two things to remember:</strong> column security is the <strong>one subtractive</strong> piece (hidden by default, opt back in); and the <strong>System Administrator bypasses it</strong> — always test with a non-admin. PREXA: Asset cost → managers only. Enterprise: bank account → finance only.</div>`
   }
 ];
 
