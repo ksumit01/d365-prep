@@ -1371,6 +1371,28 @@ foreach (var line in service.RetrieveMultiple(query).Entities)
 <h4>Why "subtractive"</h4>
 <p>Everything else in Dataverse is <strong>additive</strong> (you start with nothing, grants add up, no deny). Column security is the <strong>one exception</strong>: enabling it <strong>removes</strong> the field for all, and you opt people back in.</p>
 <div class="callout key"><strong>Test gotcha:</strong> the <strong>System Administrator bypasses column security</strong> — admins always see and edit secured fields. Always test with a non-admin. Read=Yes + Update=No → they see the value but the field is <strong>read-only</strong>.</div>`
+  },
+  {
+    id:"sec-poa-001", topic:"Security Model", type:"MCQ", difficulty:"Advanced", date:"2026-10-14",
+    q:"Which of these does NOT create a Principal Object Access (POA) row?",
+    options:[
+      "Sharing a reservation with a user",
+      "Adding a user to an access team on a record",
+      "A user reading records via their role's Business Unit access level",
+      "Cascading a share from a parent record to its children"
+    ],
+    correct:2,
+    header:"What Does / Doesn't Create a POA Row",
+    solution:`
+<p>POA stores <strong>explicit per-record shares only</strong>. Structural access (ownership, role access level, BU, hierarchy) is computed separately and writes <strong>no</strong> POA row.</p>
+<table>
+<tr><th>Creates a POA row</th><th>No POA row</th></tr>
+<tr><td>Manual share of a record</td><td>You own the record</td></tr>
+<tr><td>Access team membership</td><td>Role access level (User/BU/Deep/Org)</td></tr>
+<tr><td>Cascaded share (parent→children)</td><td>Business Unit membership</td></tr>
+<tr><td>GrantAccess in code</td><td>Hierarchy security (manager/position)</td></tr>
+</table>
+<div class="callout key"><strong>Why it matters:</strong> moving access from <em>sharing</em> to <em>roles/teams/hierarchy</em> removes POA rows → better performance. Cascading shares are the silent POA explosion.</div>`
   }
 ];
 
@@ -1731,6 +1753,47 @@ foreach (var line in service.RetrieveMultiple(q).Entities) {
 <li><strong>Read unmasked</strong> matters only with a masking rule; <strong>Update=No</strong> → view-only.</li>
 </ul>
 <div class="callout key"><strong>Two things to remember:</strong> column security is the <strong>one subtractive</strong> piece (hidden by default, opt back in); and the <strong>System Administrator bypasses it</strong> — always test with a non-admin. PREXA: Asset cost → managers only. Enterprise: bank account → finance only.</div>`
+  },
+  {
+    id:"n-security-poa", title:"POA — Principal Object Access (Sharing Table)", topic:"Security Model",
+    body:`
+<h4>Definition</h4>
+<p><strong>Principal Object Access (<code>PrincipalObjectAccess</code>)</strong> is the system table that stores <strong>record-level access grants</strong> — the "sharing" layer. One row = <em>"this <strong>principal</strong> (user or team) has these <strong>rights</strong> (Read/Write/Append/…) on this one <strong>record</strong>."</em> It's the only part of security that works <strong>per record</strong>, not per table.</p>
+<h4>What a row holds</h4>
+<table>
+<tr><th>Column</th><th>Meaning</th></tr>
+<tr><td>PrincipalId</td><td>the user or team</td></tr>
+<tr><td>ObjectId / ObjectTypeCode</td><td>the specific record + its table</td></tr>
+<tr><td>AccessRightsMask</td><td>bitmask of rights (Read, Write, Append, AppendTo, Assign, Share, Delete)</td></tr>
+<tr><td>InheritedAccessRightsMask</td><td>rights that arrived via a cascade</td></tr>
+</table>
+<h4>What IS in POA vs what is NOT</h4>
+<table>
+<tr><th>Writes a POA row</th><th>No POA row (structural)</th></tr>
+<tr><td>Manual share of a record</td><td>Ownership (you own it)</td></tr>
+<tr><td>Access team membership</td><td>Role access level — User/BU/Deep/Org</td></tr>
+<tr><td>Cascaded share (parent → children)</td><td>Business Unit membership</td></tr>
+<tr><td>GrantAccess / ModifyAccess in code</td><td>Hierarchy security (manager / position)</td></tr>
+<tr><td></td><td>Owner team's role · Assign (changes owner) · Column security</td></tr>
+</table>
+<p><strong>The line:</strong> POA = explicit <strong>shares</strong> only. Everything decided by <em>who you are / what role / which BU / the org chart</em> is computed live and never touches POA.</p>
+<h4>Where it fits in access evaluation</h4>
+<p>On every access check: ownership → role access level → BU → hierarchy → <strong>POA (shares / access teams)</strong>. POA is the "did someone explicitly grant this?" step.</p>
+<h4>Real-life scenarios</h4>
+<ul>
+<li><strong>PREXA365:</strong> a Toronto clerk is given one Calgary reservation → one POA row. Put a technician + account manager on a high-value reservation via an access team → POA rows per member. Sharing a Rental Agreement that cascades to its Reservation Lines → <strong>many</strong> rows from one click.</li>
+<li><strong>Enterprise:</strong> share a key Account with a specialist for a quarter → POA row; a sales manager seeing the team's deals via <strong>hierarchy</strong> → <strong>no</strong> POA (structural).</li>
+</ul>
+<h4>The scale trap</h4>
+<p>POA is one of the largest, most performance-sensitive tables in a big org. Every share is a row; <strong>cascading shares explode it</strong>; re-parenting/assigning recalculates it. So: prefer <strong>roles / teams / BU / hierarchy</strong> (no POA) over sharing; use sharing for true one-offs.</p>
+<h4>How to inspect it</h4>
+<ul>
+<li><strong>Not</strong> in Advanced Find / maker (it's internal).</li>
+<li>Per record → <strong>Share / Manage Access</strong> dialog.</li>
+<li>In code → <code>RetrieveSharedPrincipalsAndAccess</code>, <code>RetrievePrincipalAccess</code>.</li>
+<li>Bulk audit → <strong>SQL 4 CDS</strong> (XrmToolBox) over the TDS endpoint, querying <code>principalobjectaccess</code>.</li>
+</ul>
+<div class="callout key"><strong>One-liner:</strong> POA is the per-record sharing table — one row per principal·record·rights. Shares and access teams write to it; ownership, roles, BU and hierarchy don't. It's consulted on every access check and grows per share, so architects minimize sharing.</div>`
   }
 ];
 
